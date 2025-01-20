@@ -100,7 +100,7 @@ var Tilemap = class _Tilemap {
 var Tile = class {
   Render() {
   }
-  Update(tilemap2, x, y) {
+  Update(tilemap, x, y) {
   }
 };
 
@@ -131,9 +131,9 @@ var DirtPath = class _DirtPath extends Tile {
         line(...start.map((v) => (v + 1) / 2), 0.5, 0.5);
     }
   }
-  Update(tilemap2, x, y) {
+  Update(tilemap, x, y) {
     for (const [i, offset] of Tilemap.directConnections.entries()) {
-      this.connectivity[i] = tilemap2.At(...[x, y].map((v, j) => v + offset[j])) instanceof _DirtPath;
+      this.connectivity[i] = tilemap.At(...[x, y].map((v, j) => v + offset[j])) instanceof _DirtPath;
     }
   }
 };
@@ -146,33 +146,49 @@ var Grass = class extends Tile {
   }
 };
 
-// src/index.mts
+// src/app.mts
 var tileTypes = Object.values(tiles_exports);
-var tilemap = new Tilemap();
-function* Step() {
-  for (const pos of tilemap.Positions) {
-    const tile = new (PickRandom(tileTypes))();
-    tilemap.Set(tile, ...pos);
-    const positions = [pos, ...tilemap.AdjacentOf(...pos)];
-    tilemap.SetupTransform();
-    for (const pos2 of positions) {
-      tilemap.UpdateAt(...pos2);
-      tilemap.RenderAt(...pos2);
+var App = class {
+  tilemap;
+  iterator;
+  finished;
+  Initialize() {
+    this.tilemap = new Tilemap();
+    this.finished = false;
+    this.iterator = this.Step();
+  }
+  *Step() {
+    for (const pos of this.tilemap.Positions) {
+      const tile = new (PickRandom(tileTypes))();
+      this.tilemap.Set(tile, ...pos);
+      const positions = [pos, ...this.tilemap.AdjacentOf(...pos)];
+      this.tilemap.SetupTransform();
+      for (const pos2 of positions) {
+        this.tilemap.UpdateAt(...pos2);
+        this.tilemap.RenderAt(...pos2);
+      }
+      yield;
     }
-    yield;
+    this.finished = true;
   }
-}
-function setup() {
-  createCanvas(620, 620);
-  background("gray");
-}
-var step = Step();
-var done = false;
-function draw() {
-  if (!done) {
-    done = step.next().done !== false;
+  Iterate() {
+    if (this.finished)
+      return;
+    this.finished = this.iterator.next().done !== false;
   }
-}
+};
 function PickRandom(arr) {
   return arr[Math.floor(Math.random() * arr.length)];
+}
+
+// src/index.mts
+var app = new App();
+function setup() {
+  app.Initialize();
+  const size = app.tilemap.position.map((v, i) => v * 2 + app.tilemap.pixelSize[i]);
+  createCanvas(...size);
+  background("gray");
+}
+function draw() {
+  app.Iterate();
 }
