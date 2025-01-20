@@ -4,7 +4,7 @@ var __export = (target, all) => {
     __defProp(target, name, { get: all[name], enumerable: true });
 };
 
-// src/tilemap.mjs
+// src/tilemap.mts
 var Tilemap = class _Tilemap {
   /** The side length of one tile by pixels. */
   tileSize = 30;
@@ -21,44 +21,42 @@ var Tilemap = class _Tilemap {
       () => Array(this.size[1]).fill(void 0)
     );
   }
-  IsValidPos(...args) {
-    if (args[0] instanceof Array)
-      return this.IsValidPos(...args[0]);
-    return !args.some((v, i) => v < 0 || v >= this.size[i]);
+  IsValidPos(x, y) {
+    return ![x, y].some((v, i) => v < 0 || v >= this.size[i]);
   }
-  At(...args) {
-    if (args[0] instanceof Array)
-      return this.At(...args[0]);
-    if (!this.IsValidPos(...args))
+  At(x, y) {
+    if (!this.IsValidPos(x, y))
       return null;
-    const [x, y] = args;
     return this.tiles[x][y];
   }
-  Set(tile, ...args) {
-    if (args[0] instanceof Array)
-      return this.Set(tile, ...args[0]);
-    const [x, y] = args;
-    if (!this.IsValidPos(...args))
+  Set(tile, x, y) {
+    if (!this.IsValidPos(x, y))
       return;
     this.tiles[x][y] = tile;
   }
-  *Positions() {
-    for (let x = 0; x < this.size[0]; ++x) {
-      for (let y = 0; y < this.size[1]; ++y) {
-        yield [x, y];
+  get Positions() {
+    return function* () {
+      for (let x = 0; x < this.size[0]; ++x) {
+        for (let y = 0; y < this.size[1]; ++y) {
+          yield [x, y];
+        }
       }
-    }
+    }.call(this);
   }
-  *Tiles() {
-    for (const pos of this.Positions()) {
-      yield this.At(pos);
-    }
+  get Tiles() {
+    return function* () {
+      for (const pos of this.Positions()) {
+        const tile = this.At(...pos);
+        if (tile)
+          yield tile;
+      }
+    }.call(this);
   }
   // East, south, west, north.
   static directConnections = [[1, 0], [0, 1], [-1, 0], [0, -1]];
-  *AdjacentOf(pos) {
+  *AdjacentOf(x, y) {
     for (const offset of _Tilemap.directConnections) {
-      yield pos.map((v, i) => v + offset[i]);
+      yield [x, y].map((v, i) => v + offset[i]);
     }
   }
   SetupTransform() {
@@ -71,17 +69,17 @@ var Tilemap = class _Tilemap {
     beginClip();
     rect(0, 0, ...this.pixelSize);
     endClip();
-    for (const pos of this.Positions())
-      this.RenderAt(pos);
+    for (const pos of this.Positions)
+      this.RenderAt(...pos);
     pop();
   }
-  RenderAt(pos) {
-    const tile = this.At(pos);
+  RenderAt(x, y) {
+    const tile = this.At(x, y);
     if (!tile)
       return;
     push();
     scale(this.tileSize);
-    translate(...pos);
+    translate(x, y);
     beginClip();
     rect(0, 0, 1, 1);
     endClip();
@@ -89,28 +87,24 @@ var Tilemap = class _Tilemap {
     pop();
   }
   Update() {
-    for (const pos of this.Positions())
-      UpdateAt(pos);
+    for (const pos of this.Positions)
+      this.UpdateAt(...pos);
   }
-  UpdateAt(pos) {
-    const tile = this.At(pos);
+  UpdateAt(x, y) {
+    const tile = this.At(x, y);
     if (!tile)
       return;
-    tile.Update(this, pos);
+    tile.Update(this, x, y);
   }
 };
 var Tile = class {
   Render() {
   }
-  /**
-   * @param {Tilemap} tilemap
-   * @param {[number, number]} pos
-   */
-  Update(tilemap2, pos) {
+  Update(tilemap2, x, y) {
   }
 };
 
-// src/tiles.mjs
+// src/tiles.mts
 var tiles_exports = {};
 __export(tiles_exports, {
   DirtPath: () => DirtPath,
@@ -137,9 +131,9 @@ var DirtPath = class _DirtPath extends Tile {
         line(...start.map((v) => (v + 1) / 2), 0.5, 0.5);
     }
   }
-  Update(tilemap2, pos) {
+  Update(tilemap2, x, y) {
     for (const [i, offset] of Tilemap.directConnections.entries()) {
-      this.connectivity[i] = tilemap2.At(pos.map((v, j) => v + offset[j])) instanceof _DirtPath;
+      this.connectivity[i] = tilemap2.At(...[x, y].map((v, j) => v + offset[j])) instanceof _DirtPath;
     }
   }
 };
@@ -152,18 +146,18 @@ var Grass = class extends Tile {
   }
 };
 
-// src/index.mjs
+// src/index.mts
 var tileTypes = Object.values(tiles_exports);
 var tilemap = new Tilemap();
 function* Step() {
-  for (const pos of tilemap.Positions()) {
+  for (const pos of tilemap.Positions) {
     const tile = new (PickRandom(tileTypes))();
-    tilemap.Set(tile, pos);
-    const positions = [pos, ...tilemap.AdjacentOf(pos)];
+    tilemap.Set(tile, ...pos);
+    const positions = [pos, ...tilemap.AdjacentOf(...pos)];
     tilemap.SetupTransform();
     for (const pos2 of positions) {
-      tilemap.UpdateAt(pos2);
-      tilemap.RenderAt(pos2);
+      tilemap.UpdateAt(...pos2);
+      tilemap.RenderAt(...pos2);
     }
     yield;
   }

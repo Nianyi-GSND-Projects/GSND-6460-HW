@@ -1,4 +1,4 @@
-import { Tilemap, Tile } from './tilemap.mjs';
+import { Tilemap, Tile, type Vector2 } from './tilemap.mjs';
 
 export class DirtPath extends Tile {
 	connectivity = [false, false, false, false];
@@ -10,7 +10,7 @@ export class DirtPath extends Tile {
 		}
 	}
 
-	Render() {
+	override Render() {
 		fill('#8a6038');
 		stroke('none');
 		strokeWeight(0);
@@ -22,19 +22,19 @@ export class DirtPath extends Tile {
 
 		for(const [i, start] of Tilemap.directConnections.entries()) {
 			if(this.connectivity[i])
-				line(...start.map(v => (v + 1) / 2), 0.5, 0.5);
+				line(...(start.map(v => (v + 1) / 2) as Vector2), 0.5, 0.5);
 		}
 	}
 
-	Update(tilemap, pos) {
+	override Update(tilemap: Tilemap, x: number, y: number) {
 		for(const [i, offset] of Tilemap.directConnections.entries()) {
-			this.connectivity[i] = tilemap.At(pos.map((v, j) => v + offset[j])) instanceof DirtPath;
+			this.connectivity[i] = tilemap.At(...([x, y].map((v, j) => v + offset[j]) as Vector2)) instanceof DirtPath;
 		}
 	}
 }
 
 export class Grass extends Tile {
-	Render() {
+	override Render() {
 		fill('#289f4c');
 		stroke('none');
 		strokeWeight(0);
