@@ -21,6 +21,10 @@ export class Tilemap {
 		);
 	}
 
+	get tileCount(): number {
+		return this.size[0] * this.size[1];
+	}
+
 	IsValidPos(x: number, y: number): boolean {
 		return ![x, y].some((v, i) => v < 0 || v >= this.size[i]);
 	}
@@ -61,7 +65,10 @@ export class Tilemap {
 	static directConnections = [[1, 0], [0, 1], [-1, 0], [0, -1]];
 	*AdjacentOf(x: number, y: number): Generator<Vector2> {
 		for(const offset of Tilemap.directConnections) {
-			yield [x, y].map((v, i) => v + offset[i]) as Vector2;
+			const pos = [x, y].map((v, i) => v + offset[i]) as Vector2;
+			if(!this.IsValidPos(...pos))
+				continue;
+			yield pos;
 		}
 	}
 
@@ -86,8 +93,6 @@ export class Tilemap {
 
 	RenderAt(x: number, y: number) {
 		const tile = this.At(x, y);
-		if(!tile)
-			return;
 
 		push();
 		scale(this.tileSize);
@@ -97,7 +102,10 @@ export class Tilemap {
 		rect(0, 0, 1, 1);
 		endClip();
 
-		tile.Render();
+		if(tile)
+			tile.Render();
+		else
+			clear();
 
 		pop();
 	}
@@ -115,6 +123,7 @@ export class Tilemap {
 		tile.Update(this, x, y);
 	}
 }
+export default Tilemap;
 
 export abstract class Tile {
 	Render(): void {}

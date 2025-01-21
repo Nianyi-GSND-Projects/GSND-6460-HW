@@ -1,4 +1,4 @@
-target=index.cjs
+target=bundle.cjs
 
 bundle: clean
 	make $(target);

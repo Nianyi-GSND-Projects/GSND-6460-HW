@@ -1,45 +1,57 @@
-import { Tile, Tilemap } from './tilemap.mjs';
-export type { Vector2 } from './tilemap.mts';
+import { Tilemap, Tile, Vector2 } from './tilemap.mjs';
 import * as Tiles from './tiles.mjs';
-
-const tileTypes = Object.values(Tiles);
+import { Wfc, type Step, type Rule } from './wfc.mts';
 
 export class App {
 	tilemap: Tilemap;
-	iterator: Generator;
 	finished: boolean;
+	iterator: Generator;
+	wfc: Wfc;
+	ruleset: Rule<any>[];
+
+	/* Life cycle */
 
 	Initialize() {
 		this.tilemap = new Tilemap();
 		this.finished = false;
-		this.iterator = this.Step();
+		this.iterator = this.IterateCoroutine();
+		this.wfc = new Wfc(this.tilemap, this.ruleset);
 	}
 
-	*Step() {
-		for(const pos of this.tilemap.Positions) {
-			const tile = new (PickRandom(tileTypes));
-			this.tilemap.Set(tile, ...pos);
-			const positions = [pos, ...this.tilemap.AdjacentOf(...pos)];
-			this.tilemap.SetupTransform();
-			for(const pos of positions) {
-				this.tilemap.UpdateAt(...pos);
-				this.tilemap.RenderAt(...pos);
-			}
-			yield;
-		}
-		this.finished = true;
-	}
-
-	Iterate() {
+	Step() {
 		if(this.finished)
 			return;
 		this.finished = this.iterator.next().done !== false;
 	}
+
+	*IterateCoroutine() {
+		const startingPos = Array(2).fill(0).map(
+			(_, i) => Math.floor(Math.random() * this.tilemap.size[i])
+		) as Vector2;
+
+		for(const step of this.wfc.Iterate(...startingPos)) {
+			const pos = step.pos;
+
+			this.tilemap.SetupTransform();
+			const updateTargets = [pos, ...this.tilemap.AdjacentOf(...pos)];
+			for(const target of updateTargets) {
+				this.tilemap.UpdateAt(...target);
+				this.tilemap.RenderAt(...target);
+			}
+
+			const tile = this.tilemap.At(...pos);
+			console.log([
+				`Stack size: ${this.wfc.stackSize}`,
+				`${tile?.constructor?.name}@(${pos})`,
+				`${this.wfc.Validate(...pos) ? 'succeed' : 'failed'}`
+			].join(' '));
+
+
+			yield;
+		}
+
+		this.finished = true;
+	}
 }
 
-
-/* Auxiliary functions */
-
-function PickRandom<T>(arr: Array<T>): T {
-	return arr[Math.floor(Math.random() * arr.length)];
-}
+export default App;
