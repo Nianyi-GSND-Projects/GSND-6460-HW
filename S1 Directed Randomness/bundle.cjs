@@ -483,7 +483,7 @@ var Tilemap = class _Tilemap {
     rect(0, 0, ...this.pixelSize);
     endClip();
     for (const pos of this.Positions)
-      this.RenderAt(...pos);
+      this.RenderAt(pos);
     pop();
   }
   RenderAt(pos) {

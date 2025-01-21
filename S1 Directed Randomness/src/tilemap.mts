@@ -100,7 +100,7 @@ export class Tilemap {
 		endClip();
 
 		for(const pos of this.Positions)
-			this.RenderAt(...pos);
+			this.RenderAt(pos);
 
 		pop();
 	}
