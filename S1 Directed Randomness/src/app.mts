@@ -2,21 +2,17 @@ import { Tilemap, Vector2 } from './tilemap.mjs';
 import { Wfc, type Rule } from './wfc.mts';
 
 export class App {
-	size: Vector2 = [10, 10];
-	tilemap: Tilemap;
+	tilemap: Tilemap = new Tilemap();
 	finished: boolean;
 	iterator: Generator;
-	wfc: Wfc;
-	ruleset: Rule<any>[];
+	ruleset: Rule<any>[] = [];
+	wfc: Wfc = new Wfc(this.tilemap, this.ruleset);
 
 	/* Life cycle */
 
 	Initialize() {
-		this.tilemap = new Tilemap();
-		this.tilemap.size = this.size;
 		this.finished = false;
 		this.iterator = this.IterateCoroutine();
-		this.wfc = new Wfc(this.tilemap, this.ruleset);
 	}
 
 	Step() {

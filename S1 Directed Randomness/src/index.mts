@@ -4,8 +4,9 @@ import { Tilemap, Vector2 } from './tilemap.mjs';
 import * as Tiles from './tiles.mjs';
 
 const app = new App();
-app.size = [10, 10];
-app.ruleset = [
+app.tilemap.size = [10, 10];
+app.tilemap.tileSize = 60;
+app.ruleset.push(...[
 	{
 		type: Tiles.DirtPath,
 		match: (tilemap: Tilemap, pos: Vector2) => {
@@ -37,7 +38,7 @@ app.ruleset = [
 			return true;
 		}
 	},
-];
+]);
 
 function IsIsolatedPath(tilemap: Tilemap, pos: Vector2) {
 	if(!(tilemap.At(...pos) instanceof Tiles.DirtPath))

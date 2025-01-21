@@ -290,19 +290,15 @@ function* TraverseReversed(arr) {
 
 // src/app.mts
 var App = class {
-  size = [10, 10];
-  tilemap;
+  tilemap = new Tilemap();
   finished;
   iterator;
-  wfc;
-  ruleset;
+  ruleset = [];
+  wfc = new Wfc(this.tilemap, this.ruleset);
   /* Life cycle */
   Initialize() {
-    this.tilemap = new Tilemap();
-    this.tilemap.size = this.size;
     this.finished = false;
     this.iterator = this.IterateCoroutine();
-    this.wfc = new Wfc(this.tilemap, this.ruleset);
   }
   Step() {
     if (this.finished)
@@ -336,8 +332,9 @@ var app_default = App;
 
 // src/index.mts
 var app = new app_default();
-app.size = [10, 10];
-app.ruleset = [
+app.tilemap.size = [10, 10];
+app.tilemap.tileSize = 60;
+app.ruleset.push(...[
   {
     type: DirtPath,
     match: (tilemap, pos) => {
@@ -363,7 +360,7 @@ app.ruleset = [
       return true;
     }
   }
-];
+]);
 function IsIsolatedPath(tilemap, pos) {
   if (!(tilemap.At(...pos) instanceof DirtPath))
     return false;
