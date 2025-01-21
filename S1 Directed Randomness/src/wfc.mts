@@ -64,10 +64,10 @@ export class Wfc {
 
 			// Skip if it doesn't work.
 			if(!this.Validate(x, y)) {
-				this.temperature += 1.0;
+				this.temperature += 1;
 				continue;
 			}
-			this.temperature -= 0.25;
+			this.temperature /= 2;
 			this.temperature = Math.max(0, this.temperature);
 
 			// Check if all tiles are valid.
@@ -104,7 +104,10 @@ export class Wfc {
 
 		// All types are tried, no good, take steps back.
 		// The amount of the step is decided by the temperature.
-		const stepbackCount = Math.floor(Math.exp((Math.random() + 1) * this.temperature * 0.05))
+		const stepbackCount = Math.min(
+			this.stackSize - 1,
+			Math.floor(Math.exp(Math.random() * this.temperature * 0.1)),
+		);
 		for(let i = 0; i < stepbackCount; ++i) {
 			const stepback = this.path.pop();
 			this.tilemap.Set(undefined, ...stepback.pos); // Reset the tile.

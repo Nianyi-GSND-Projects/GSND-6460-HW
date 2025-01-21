@@ -1,24 +1,31 @@
-import { Tilemap, Vector2 } from './tilemap.mjs';
+import { Tile, Tilemap, Vector2 } from './tilemap.mjs';
 import { Wfc, type Rule } from './wfc.mts';
+import { EventEmitter } from 'events';
 
-export class App {
+export class App extends EventEmitter {
+	/* Fields */
+
 	tilemap: Tilemap = new Tilemap();
+	ruleset: Rule<any>[] = [];
+	wfc: Wfc;
 	finished: boolean;
 	iterator: Generator;
-	ruleset: Rule<any>[] = [];
-	wfc: Wfc = new Wfc(this.tilemap, this.ruleset);
+	iteration: number;
 
 	/* Life cycle */
 
 	Initialize() {
-		this.finished = false;
-		this.iterator = this.IterateCoroutine();
+		this.ResetWfc();
 	}
 
 	Step() {
 		if(this.finished)
 			return;
 		this.finished = this.iterator.next().done !== false;
+		++this.iteration;
+		this.emit('iterate', this.iteration);
+		if(this.finished)
+			this.emit('done');
 	}
 
 	*IterateCoroutine() {
@@ -48,6 +55,15 @@ export class App {
 		}
 
 		this.finished = true;
+	}
+
+	ResetWfc() {
+		for(const pos of this.tilemap.Positions)
+			this.tilemap.Set(undefined, ...pos);
+		this.wfc = new Wfc(this.tilemap, this.ruleset);
+		this.finished = false;
+		this.iterator = this.IterateCoroutine();
+		this.iteration = 0;
 	}
 }
 

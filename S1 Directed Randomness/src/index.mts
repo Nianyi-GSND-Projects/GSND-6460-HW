@@ -3,7 +3,10 @@ import App from './app.mts';
 import { Tilemap, Vector2 } from './tilemap.mjs';
 import * as Tiles from './tiles.mjs';
 
+/* App */
+
 const app = new App();
+
 app.tilemap.size = [10, 10];
 app.tilemap.tileSize = 60;
 app.ruleset.push(...[
@@ -48,6 +51,11 @@ function IsIsolatedPath(tilemap: Tilemap, pos: Vector2) {
 		return true;
 }
 
+function InitializeApp() {
+}
+
+/* p5.js life cycle */
+
 function setup() {
 	app.Initialize();
 
@@ -56,8 +64,20 @@ function setup() {
 	) as Vector2;
 	createCanvas(...size);
 	background('gray');
+	app.on('iterate', i => {
+		if(i > CountKeys(Tiles) * 2 * app.tilemap.tileCount) {
+			app.ResetWfc();
+			app.tilemap.Render();
+		}
+	});
 }
 
 function draw() {
 	app.Step();
+}
+
+/* */
+
+function CountKeys(obj: Object): number {
+	return Array.from(Object.keys(obj)).length;
 }
