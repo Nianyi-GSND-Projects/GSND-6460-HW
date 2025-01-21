@@ -62,9 +62,23 @@ export class Tilemap {
 	}
 
 	// East, south, west, north.
-	static directConnections = [[1, 0], [0, 1], [-1, 0], [0, -1]];
-	*AdjacentOf(x: number, y: number): Generator<Vector2> {
-		for(const offset of Tilemap.directConnections) {
+	static directNeighbors: Vector2[] = [
+		[+1, 0],
+		[0, +1],
+		[-1, 0],
+		[0, -1]
+	];
+	static corners: Vector2[] = [
+		[-1, -1],
+		[+1, -1],
+		[-1, +1],
+		[+1, +1],
+	];
+	*AdjacentOf(x: number, y: number, includeCorners: boolean = false): Generator<Vector2> {
+		const offsets = Tilemap.directNeighbors.slice();
+		if(includeCorners)
+			offsets.push(...Tilemap.corners);
+		for(const offset of offsets) {
 			const pos = [x, y].map((v, i) => v + offset[i]) as Vector2;
 			if(!this.IsValidPos(...pos))
 				continue;

@@ -4,6 +4,7 @@ import * as Tiles from './tiles.mjs';
 export type Step = {
 	pos: Vector2;
 	remainingTypes: { new(): Tile }[];
+	remainingNeighbors: Vector2[];
 };
 
 export type Rule<T extends Tile> = {
@@ -15,6 +16,7 @@ export class Wfc {
 	readonly tilemap: Tilemap;
 	readonly path: Step[] = [];
 	readonly ruleset: Rule<any>[];
+	temperature: number = 0;
 
 	constructor(tilemap: Tilemap, ruleset: Rule<any>[]) {
 		this.tilemap = tilemap;
@@ -41,6 +43,7 @@ export class Wfc {
 		return {
 			pos: [x, y],
 			remainingTypes: Object.values(Tiles),
+			remainingNeighbors: Array.from(this.tilemap.AdjacentOf(x, y)).filter(pos => this.IsNeighborEmpty(...pos)),
 		};
 	}
 
@@ -60,39 +63,58 @@ export class Wfc {
 			yield step;
 
 			// Skip if it doesn't work.
-			if(!this.Validate(x, y))
+			if(!this.Validate(x, y)) {
+				this.temperature += 1.0;
 				continue;
+			}
+			this.temperature -= 0.25;
+			this.temperature = Math.max(0, this.temperature);
 
 			// Check if all tiles are valid.
 			if(this.stackSize >= this.tilemap.tileCount)
 				throw 'done';
 
 			// Explore new tiles.
-			for(const source of TraverseReversed(this.path)) {
-				const neighbors = Array.from(this.tilemap.AdjacentOf(...source.pos));
-				while(neighbors.length) {
-					const neighbor = TakeRandom(neighbors);
-					if(!this.IsNeighborEmpty(...neighbor))
-						continue;
-					for(const subStep of this.Expore(...neighbor))
-						yield subStep;
-				}
+
+			// Start from neighbors for performance.
+			while(step.remainingNeighbors.length) {
+				const neighbor = TakeRandom(step.remainingNeighbors);
+				// if(!this.IsNeighborEmpty(...neighbor))
+				// 	continue;
+				for(const subStep of this.Expore(...neighbor))
+					yield subStep;
+			}
+
+			// Then pick wild empty tiles.
+			const candidates = Array.from(this.tilemap.Positions)
+				.filter(pos => this.tilemap.At(...pos) === undefined);
+
+			Shuffle(candidates); // Heuristic.
+			candidates.splice(3, candidates.length);
+
+			// TODO: Remove tested neighbors from the candidates.
+			while(candidates.length) {
+				const neighbor = TakeRandom(candidates);
+				// if(!this.IsNeighborEmpty(...neighbor))
+				// 	continue;
+				for(const subStep of this.Expore(...neighbor))
+					yield subStep;
 			}
 		}
 
-		// All types are tried, no good.
-		// We're taking a step back.
-		this.tilemap.Set(undefined, x, y); // Reset the tile.
-		yield this.path.pop(); // Pop the step from the stack.
+		// All types are tried, no good, take steps back.
+		// The amount of the step is decided by the temperature.
+		const stepbackCount = Math.floor(Math.exp((Math.random() + 1) * this.temperature * 0.05))
+		for(let i = 0; i < stepbackCount; ++i) {
+			const stepback = this.path.pop();
+			this.tilemap.Set(undefined, ...stepback.pos); // Reset the tile.
+			yield stepback; // Pop the step from the stack.
+		}
 	}
 
 	Validate(x: number, y: number): boolean {
 		if(!this.ValidateSingle(x, y))
 			return false;
-		for(const neighbor of this.tilemap.AdjacentOf(x, y)) {
-			if(!this.ValidateSingle(...neighbor))
-				return false;
-		}
 		return true;
 	}
 

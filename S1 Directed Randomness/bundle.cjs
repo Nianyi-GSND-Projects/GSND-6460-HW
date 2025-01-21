@@ -56,9 +56,23 @@ var Tilemap = class _Tilemap {
     }.call(this);
   }
   // East, south, west, north.
-  static directConnections = [[1, 0], [0, 1], [-1, 0], [0, -1]];
-  *AdjacentOf(x, y) {
-    for (const offset of _Tilemap.directConnections) {
+  static directNeighbors = [
+    [1, 0],
+    [0, 1],
+    [-1, 0],
+    [0, -1]
+  ];
+  static corners = [
+    [-1, -1],
+    [1, -1],
+    [-1, 1],
+    [1, 1]
+  ];
+  *AdjacentOf(x, y, includeCorners = false) {
+    const offsets = _Tilemap.directNeighbors.slice();
+    if (includeCorners)
+      offsets.push(..._Tilemap.corners);
+    for (const offset of offsets) {
       const pos = [x, y].map((v, i) => v + offset[i]);
       if (!this.IsValidPos(...pos))
         continue;
@@ -134,13 +148,13 @@ var DirtPath = class _DirtPath extends Tile {
     fill("none");
     stroke("white");
     strokeWeight(0.3);
-    for (const [i, start] of Tilemap.directConnections.entries()) {
+    for (const [i, start] of Tilemap.directNeighbors.entries()) {
       if (this.connectivity[i])
         line(...start.map((v) => (v + 1) / 2), 0.5, 0.5);
     }
   }
   Update(tilemap, x, y) {
-    for (const [i, offset] of Tilemap.directConnections.entries()) {
+    for (const [i, offset] of Tilemap.directNeighbors.entries()) {
       this.connectivity[i] = tilemap.At(...[x, y].map((v, j) => v + offset[j])) instanceof _DirtPath;
     }
   }
@@ -159,6 +173,7 @@ var Wfc = class {
   tilemap;
   path = [];
   ruleset;
+  temperature = 0;
   constructor(tilemap, ruleset) {
     this.tilemap = tilemap;
     this.ruleset = ruleset;
@@ -179,7 +194,8 @@ var Wfc = class {
   MakeStep(x, y) {
     return {
       pos: [x, y],
-      remainingTypes: Object.values(tiles_exports)
+      remainingTypes: Object.values(tiles_exports),
+      remainingNeighbors: Array.from(this.tilemap.AdjacentOf(x, y)).filter((pos) => this.IsNeighborEmpty(...pos))
     };
   }
   IsNeighborEmpty(x, y) {
@@ -193,31 +209,38 @@ var Wfc = class {
       const tile = new type();
       this.tilemap.Set(tile, x, y);
       yield step;
-      if (!this.Validate(x, y))
+      if (!this.Validate(x, y)) {
+        this.temperature += 1;
         continue;
+      }
+      this.temperature -= 0.25;
+      this.temperature = Math.max(0, this.temperature);
       if (this.stackSize >= this.tilemap.tileCount)
         throw "done";
-      for (const source of TraverseReversed(this.path)) {
-        const neighbors = Array.from(this.tilemap.AdjacentOf(...source.pos));
-        while (neighbors.length) {
-          const neighbor = TakeRandom(neighbors);
-          if (!this.IsNeighborEmpty(...neighbor))
-            continue;
-          for (const subStep of this.Expore(...neighbor))
-            yield subStep;
-        }
+      while (step.remainingNeighbors.length) {
+        const neighbor = TakeRandom(step.remainingNeighbors);
+        for (const subStep of this.Expore(...neighbor))
+          yield subStep;
+      }
+      const candidates = Array.from(this.tilemap.Positions).filter((pos) => this.tilemap.At(...pos) === void 0);
+      Shuffle(candidates);
+      candidates.splice(3, candidates.length);
+      while (candidates.length) {
+        const neighbor = TakeRandom(candidates);
+        for (const subStep of this.Expore(...neighbor))
+          yield subStep;
       }
     }
-    this.tilemap.Set(void 0, x, y);
-    yield this.path.pop();
+    const stepbackCount = Math.floor(Math.exp((Math.random() + 1) * this.temperature * 0.05));
+    for (let i = 0; i < stepbackCount; ++i) {
+      const stepback = this.path.pop();
+      this.tilemap.Set(void 0, ...stepback.pos);
+      yield stepback;
+    }
   }
   Validate(x, y) {
     if (!this.ValidateSingle(x, y))
       return false;
-    for (const neighbor of this.tilemap.AdjacentOf(x, y)) {
-      if (!this.ValidateSingle(...neighbor))
-        return false;
-    }
     return true;
   }
   ValidateSingle(x, y) {
@@ -267,6 +290,7 @@ function* TraverseReversed(arr) {
 
 // src/app.mts
 var App = class {
+  size = [10, 10];
   tilemap;
   finished;
   iterator;
@@ -275,6 +299,7 @@ var App = class {
   /* Life cycle */
   Initialize() {
     this.tilemap = new Tilemap();
+    this.tilemap.size = this.size;
     this.finished = false;
     this.iterator = this.IterateCoroutine();
     this.wfc = new Wfc(this.tilemap, this.ruleset);
@@ -291,7 +316,7 @@ var App = class {
     for (const step of this.wfc.Iterate(...startingPos)) {
       const pos = step.pos;
       this.tilemap.SetupTransform();
-      const updateTargets = [pos, ...this.tilemap.AdjacentOf(...pos)];
+      const updateTargets = [pos, ...this.tilemap.AdjacentOf(...pos, true)];
       for (const target of updateTargets) {
         this.tilemap.UpdateAt(...target);
         this.tilemap.RenderAt(...target);
@@ -311,21 +336,41 @@ var app_default = App;
 
 // src/index.mts
 var app = new app_default();
+app.size = [10, 10];
 app.ruleset = [
   {
     type: DirtPath,
     match: (tilemap, pos) => {
-      const up = tilemap.At(pos[0], pos[1] - 1);
-      if (!up)
-        return true;
-      return Math.random() > 0.8 || up instanceof DirtPath;
+      for (const corner of Tilemap.corners) {
+        const a = [0, corner[1]], b = [corner[0], 0];
+        const targetTiles = [a, b, corner].map((offset) => offset.map((v, i) => pos[i] + v)).map((pos2) => tilemap.At(...pos2));
+        const allAre = targetTiles.every((tile) => tile instanceof DirtPath);
+        if (allAre)
+          return false;
+      }
+      if (IsIsolatedPath(tilemap, pos))
+        return false;
+      return true;
     }
   },
   {
     type: Grass,
-    match: (tilemap, pos) => true
+    match: (tilemap, pos) => {
+      for (const neighbor of tilemap.AdjacentOf(...pos)) {
+        if (IsIsolatedPath(tilemap, neighbor))
+          return false;
+      }
+      return true;
+    }
   }
 ];
+function IsIsolatedPath(tilemap, pos) {
+  if (!(tilemap.At(...pos) instanceof DirtPath))
+    return false;
+  const neighbors = Array.from(tilemap.AdjacentOf(...pos));
+  if (neighbors.every((pos2) => tilemap.At(...pos2) instanceof Grass))
+    return true;
+}
 function setup() {
   app.Initialize();
   const size = app.tilemap.position.map(

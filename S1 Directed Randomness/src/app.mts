@@ -1,8 +1,8 @@
-import { Tilemap, Tile, Vector2 } from './tilemap.mjs';
-import * as Tiles from './tiles.mjs';
-import { Wfc, type Step, type Rule } from './wfc.mts';
+import { Tilemap, Vector2 } from './tilemap.mjs';
+import { Wfc, type Rule } from './wfc.mts';
 
 export class App {
+	size: Vector2 = [10, 10];
 	tilemap: Tilemap;
 	finished: boolean;
 	iterator: Generator;
@@ -13,6 +13,7 @@ export class App {
 
 	Initialize() {
 		this.tilemap = new Tilemap();
+		this.tilemap.size = this.size;
 		this.finished = false;
 		this.iterator = this.IterateCoroutine();
 		this.wfc = new Wfc(this.tilemap, this.ruleset);
@@ -33,7 +34,7 @@ export class App {
 			const pos = step.pos;
 
 			this.tilemap.SetupTransform();
-			const updateTargets = [pos, ...this.tilemap.AdjacentOf(...pos)];
+			const updateTargets = [pos, ...this.tilemap.AdjacentOf(...pos, true)];
 			for(const target of updateTargets) {
 				this.tilemap.UpdateAt(...target);
 				this.tilemap.RenderAt(...target);

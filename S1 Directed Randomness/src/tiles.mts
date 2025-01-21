@@ -20,14 +20,14 @@ export class DirtPath extends Tile {
 		stroke('white');
 		strokeWeight(0.3);
 
-		for(const [i, start] of Tilemap.directConnections.entries()) {
+		for(const [i, start] of Tilemap.directNeighbors.entries()) {
 			if(this.connectivity[i])
 				line(...(start.map(v => (v + 1) / 2) as Vector2), 0.5, 0.5);
 		}
 	}
 
 	override Update(tilemap: Tilemap, x: number, y: number) {
-		for(const [i, offset] of Tilemap.directConnections.entries()) {
+		for(const [i, offset] of Tilemap.directNeighbors.entries()) {
 			this.connectivity[i] = tilemap.At(...([x, y].map((v, j) => v + offset[j]) as Vector2)) instanceof DirtPath;
 		}
 	}
