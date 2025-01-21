@@ -25,20 +25,20 @@ export class Tilemap {
 		return this.size[0] * this.size[1];
 	}
 
-	IsValidPos(x: number, y: number): boolean {
-		return ![x, y].some((v, i) => v < 0 || v >= this.size[i]);
+	IsValidPos(pos: Vector2): boolean {
+		return !pos.some((v, i) => v < 0 || v >= this.size[i]);
 	}
 
-	At(x: number, y: number): Tile | null | undefined {
-		if(!this.IsValidPos(x, y))
+	At(pos: Vector2): Tile | null | undefined {
+		if(!this.IsValidPos(pos))
 			return null;
-		return this.tiles[x][y];
+		return this.tiles[pos[0]][pos[1]];
 	}
 
-	Set(tile: Tile, x: number, y: number) {
-		if(!this.IsValidPos(x, y))
+	Set(tile: Tile, pos: Vector2) {
+		if(!this.IsValidPos(pos))
 			return;
-		this.tiles[x][y] = tile;
+		this.tiles[pos[0]][pos[1]] = tile;
 	}
 
 	get Positions(): Generator<Vector2> {
@@ -74,15 +74,15 @@ export class Tilemap {
 		[-1, +1],
 		[+1, +1],
 	];
-	*AdjacentOf(x: number, y: number, includeCorners: boolean = false): Generator<Vector2> {
+	*NeighborsOf(pos: Vector2, includeCorners: boolean = false): Generator<Vector2> {
 		const offsets = Tilemap.directNeighbors.slice();
 		if(includeCorners)
 			offsets.push(...Tilemap.corners);
 		for(const offset of offsets) {
-			const pos = [x, y].map((v, i) => v + offset[i]) as Vector2;
-			if(!this.IsValidPos(...pos))
+			const neighbor = pos.map((v, i) => v + offset[i]) as Vector2;
+			if(!this.IsValidPos(neighbor))
 				continue;
-			yield pos;
+			yield neighbor;
 		}
 	}
 
@@ -105,12 +105,12 @@ export class Tilemap {
 		pop();
 	}
 
-	RenderAt(x: number, y: number) {
-		const tile = this.At(x, y);
+	RenderAt(pos: Vector2) {
+		const tile = this.At(pos);
 
 		push();
 		scale(this.tileSize);
-		translate(x, y);
+		translate(...pos);
 
 		beginClip();
 		rect(0, 0, 1, 1);
@@ -126,15 +126,15 @@ export class Tilemap {
 
 	Update() {
 		for(const pos of this.Positions)
-			this.UpdateAt(...pos);
+			this.UpdateAt(pos);
 	}
 
-	UpdateAt(x: number, y: number) {
-		const tile = this.At(x, y);
+	UpdateAt(pos: Vector2) {
+		const tile = this.At(pos);
 		if(!tile)
 			return;
 
-		tile.Update(this, x, y);
+		tile.Update(this, pos);
 	}
 }
 export default Tilemap;
@@ -142,5 +142,5 @@ export default Tilemap;
 export abstract class Tile {
 	Render(): void {}
 
-	Update(tilemap: Tilemap, x: number, y: number): void {}
+	Update(tilemap: Tilemap, pos: Vector2): void {}
 }

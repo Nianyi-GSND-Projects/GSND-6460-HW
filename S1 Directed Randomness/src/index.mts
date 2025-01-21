@@ -18,7 +18,7 @@ app.ruleset.push(...[
 				const a = [0, corner[1]], b = [corner[0], 0];
 				const targetTiles = [a, b, corner]
 					.map(offset => offset.map((v, i) => pos[i] + v) as Vector2)
-					.map(pos => tilemap.At(...pos));
+					.map(pos => tilemap.At(pos));
 				const allAre = targetTiles.every(tile => tile instanceof Tiles.DirtPath);
 				if(allAre)
 					return false;
@@ -34,7 +34,7 @@ app.ruleset.push(...[
 	{
 		type: Tiles.Grass,
 		match: (tilemap: Tilemap, pos: Vector2) => {
-			for(const neighbor of tilemap.AdjacentOf(...pos)) {
+			for(const neighbor of tilemap.NeighborsOf(pos)) {
 				if(IsIsolatedPath(tilemap, neighbor))
 					return false;
 			}
@@ -44,10 +44,10 @@ app.ruleset.push(...[
 ]);
 
 function IsIsolatedPath(tilemap: Tilemap, pos: Vector2) {
-	if(!(tilemap.At(...pos) instanceof Tiles.DirtPath))
+	if(!(tilemap.At(pos) instanceof Tiles.DirtPath))
 		return false;
-	const neighbors = Array.from(tilemap.AdjacentOf(...pos));
-	if(neighbors.every(pos => tilemap.At(...pos) instanceof Tiles.Grass))
+	const neighbors = Array.from(tilemap.NeighborsOf(pos));
+	if(neighbors.every(pos => tilemap.At(pos) instanceof Tiles.Grass))
 		return true;
 }
 

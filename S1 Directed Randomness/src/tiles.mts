@@ -26,9 +26,9 @@ export class DirtPath extends Tile {
 		}
 	}
 
-	override Update(tilemap: Tilemap, x: number, y: number) {
+	override Update(tilemap: Tilemap, pos: Vector2) {
 		for(const [i, offset] of Tilemap.directNeighbors.entries()) {
-			this.connectivity[i] = tilemap.At(...([x, y].map((v, j) => v + offset[j]) as Vector2)) instanceof DirtPath;
+			this.connectivity[i] = tilemap.At((pos.map((v, j) => v + offset[j]) as Vector2)) instanceof DirtPath;
 		}
 	}
 }

@@ -417,18 +417,18 @@ var Tilemap = class _Tilemap {
   get tileCount() {
     return this.size[0] * this.size[1];
   }
-  IsValidPos(x, y) {
-    return ![x, y].some((v, i) => v < 0 || v >= this.size[i]);
+  IsValidPos(pos) {
+    return !pos.some((v, i) => v < 0 || v >= this.size[i]);
   }
-  At(x, y) {
-    if (!this.IsValidPos(x, y))
+  At(pos) {
+    if (!this.IsValidPos(pos))
       return null;
-    return this.tiles[x][y];
+    return this.tiles[pos[0]][pos[1]];
   }
-  Set(tile, x, y) {
-    if (!this.IsValidPos(x, y))
+  Set(tile, pos) {
+    if (!this.IsValidPos(pos))
       return;
-    this.tiles[x][y] = tile;
+    this.tiles[pos[0]][pos[1]] = tile;
   }
   get Positions() {
     return function* () {
@@ -461,15 +461,15 @@ var Tilemap = class _Tilemap {
     [-1, 1],
     [1, 1]
   ];
-  *AdjacentOf(x, y, includeCorners = false) {
+  *NeighborsOf(pos, includeCorners = false) {
     const offsets = _Tilemap.directNeighbors.slice();
     if (includeCorners)
       offsets.push(..._Tilemap.corners);
     for (const offset of offsets) {
-      const pos = [x, y].map((v, i) => v + offset[i]);
-      if (!this.IsValidPos(...pos))
+      const neighbor = pos.map((v, i) => v + offset[i]);
+      if (!this.IsValidPos(neighbor))
         continue;
-      yield pos;
+      yield neighbor;
     }
   }
   SetupTransform() {
@@ -486,11 +486,11 @@ var Tilemap = class _Tilemap {
       this.RenderAt(...pos);
     pop();
   }
-  RenderAt(x, y) {
-    const tile = this.At(x, y);
+  RenderAt(pos) {
+    const tile = this.At(pos);
     push();
     scale(this.tileSize);
-    translate(x, y);
+    translate(...pos);
     beginClip();
     rect(0, 0, 1, 1);
     endClip();
@@ -502,20 +502,20 @@ var Tilemap = class _Tilemap {
   }
   Update() {
     for (const pos of this.Positions)
-      this.UpdateAt(...pos);
+      this.UpdateAt(pos);
   }
-  UpdateAt(x, y) {
-    const tile = this.At(x, y);
+  UpdateAt(pos) {
+    const tile = this.At(pos);
     if (!tile)
       return;
-    tile.Update(this, x, y);
+    tile.Update(this, pos);
   }
 };
 var tilemap_default = Tilemap;
 var Tile = class {
   Render() {
   }
-  Update(tilemap, x, y) {
+  Update(tilemap, pos) {
   }
 };
 
@@ -546,9 +546,9 @@ var DirtPath = class _DirtPath extends Tile {
         line(...start.map((v) => (v + 1) / 2), 0.5, 0.5);
     }
   }
-  Update(tilemap, x, y) {
+  Update(tilemap, pos) {
     for (const [i, offset] of Tilemap.directNeighbors.entries()) {
-      this.connectivity[i] = tilemap.At(...[x, y].map((v, j) => v + offset[j])) instanceof _DirtPath;
+      this.connectivity[i] = tilemap.At(pos.map((v, j) => v + offset[j])) instanceof _DirtPath;
     }
   }
 };
@@ -574,9 +574,9 @@ var Wfc = class {
   get stackSize() {
     return this.path.length;
   }
-  *Iterate(x, y) {
+  *Iterate(pos) {
     try {
-      for (const step of this.Expore(x, y))
+      for (const step of this.Explore(pos))
         yield step;
     } catch (e) {
       if (e === "done")
@@ -584,25 +584,25 @@ var Wfc = class {
       throw e;
     }
   }
-  MakeStep(x, y) {
+  MakeStep(pos) {
     return {
-      pos: [x, y],
+      pos,
       remainingTypes: Object.values(tiles_exports),
-      remainingNeighbors: Array.from(this.tilemap.AdjacentOf(x, y)).filter((pos) => this.IsNeighborEmpty(...pos))
+      remainingNeighbors: Array.from(this.tilemap.NeighborsOf(pos)).filter((pos2) => this.IsNeighborEmpty(pos2))
     };
   }
-  IsNeighborEmpty(x, y) {
-    return this.tilemap.IsValidPos(x, y) && !this.tilemap.At(x, y);
+  IsNeighborEmpty(pos) {
+    return this.tilemap.IsValidPos(pos) && !this.tilemap.At(pos);
   }
-  *Expore(x, y) {
-    const step = this.MakeStep(x, y);
+  *Explore(pos) {
+    const step = this.MakeStep(pos);
     this.path.push(step);
     while (step.remainingTypes.length) {
       const type = TakeRandom(step.remainingTypes);
       const tile = new type();
-      this.tilemap.Set(tile, x, y);
+      this.tilemap.Set(tile, pos);
       yield step;
-      if (!this.Validate(x, y)) {
+      if (!this.Validate(pos)) {
         this.temperature += 1;
         continue;
       }
@@ -612,15 +612,15 @@ var Wfc = class {
         throw "done";
       while (step.remainingNeighbors.length) {
         const neighbor = TakeRandom(step.remainingNeighbors);
-        for (const subStep of this.Expore(...neighbor))
+        for (const subStep of this.Explore(neighbor))
           yield subStep;
       }
-      const candidates = Array.from(this.tilemap.Positions).filter((pos) => this.tilemap.At(...pos) === void 0);
+      const candidates = Array.from(this.tilemap.Positions).filter((pos2) => this.tilemap.At(pos2) === void 0);
       Shuffle(candidates);
       candidates.splice(3, candidates.length);
       while (candidates.length) {
         const neighbor = TakeRandom(candidates);
-        for (const subStep of this.Expore(...neighbor))
+        for (const subStep of this.Explore(neighbor))
           yield subStep;
       }
     }
@@ -630,23 +630,23 @@ var Wfc = class {
     );
     for (let i = 0; i < stepbackCount; ++i) {
       const stepback = this.path.pop();
-      this.tilemap.Set(void 0, ...stepback.pos);
+      this.tilemap.Set(void 0, stepback.pos);
       yield stepback;
     }
   }
-  Validate(x, y) {
-    if (!this.ValidateSingle(x, y))
+  Validate(pos) {
+    if (!this.ValidateSingle(pos))
       return false;
     return true;
   }
-  ValidateSingle(x, y) {
-    const tile = this.tilemap.At(x, y);
+  ValidateSingle(pos) {
+    const tile = this.tilemap.At(pos);
     if (!tile)
       return true;
     for (const rule of this.ruleset) {
       if (!(tile instanceof rule.type))
         continue;
-      if (!rule.match(this.tilemap, [x, y]))
+      if (!rule.match(this.tilemap, pos))
         return false;
     }
     return true;
@@ -659,9 +659,6 @@ function TakeRandom(arr) {
   const i = PickRandom([...arr.keys()]);
   return arr.splice(i, 1)[0];
 }
-function LastOf(arr) {
-  return arr[arr.length - 1];
-}
 function Shuffle(arr) {
   let currentIndex = arr.length;
   while (currentIndex != 0) {
@@ -672,16 +669,6 @@ function Shuffle(arr) {
       arr[currentIndex]
     ];
   }
-}
-function Remove(arr, val) {
-  const i = arr.indexOf(val);
-  if (i === -1)
-    return;
-  arr.splice(i, 1);
-}
-function* TraverseReversed(arr) {
-  for (let i = arr.length; i > 0; --i)
-    yield arr[i - 1];
 }
 
 // src/app.mts
@@ -711,19 +698,19 @@ var App = class extends import_events.EventEmitter {
     const startingPos = Array(2).fill(0).map(
       (_, i) => Math.floor(Math.random() * this.tilemap.size[i])
     );
-    for (const step of this.wfc.Iterate(...startingPos)) {
+    for (const step of this.wfc.Iterate(startingPos)) {
       const pos = step.pos;
       this.tilemap.SetupTransform();
-      const updateTargets = [pos, ...this.tilemap.AdjacentOf(...pos, true)];
+      const updateTargets = [pos, ...this.tilemap.NeighborsOf(pos, true)];
       for (const target of updateTargets) {
-        this.tilemap.UpdateAt(...target);
-        this.tilemap.RenderAt(...target);
+        this.tilemap.UpdateAt(target);
+        this.tilemap.RenderAt(target);
       }
-      const tile = this.tilemap.At(...pos);
+      const tile = this.tilemap.At(pos);
       console.log([
         `Stack size: ${this.wfc.stackSize}`,
         `${tile?.constructor?.name}@(${pos})`,
-        `${this.wfc.Validate(...pos) ? "succeed" : "failed"}`
+        `${this.wfc.Validate(pos) ? "succeed" : "failed"}`
       ].join(" "));
       yield;
     }
@@ -731,8 +718,7 @@ var App = class extends import_events.EventEmitter {
   }
   ResetWfc() {
     for (const pos of this.tilemap.Positions)
-      this.tilemap.Set(void 0, ...pos);
-    this.tilemap.Render();
+      this.tilemap.Set(void 0, pos);
     this.wfc = new Wfc(this.tilemap, this.ruleset);
     this.finished = false;
     this.iterator = this.IterateCoroutine();
@@ -751,7 +737,7 @@ app.ruleset.push(...[
     match: (tilemap, pos) => {
       for (const corner of Tilemap.corners) {
         const a = [0, corner[1]], b = [corner[0], 0];
-        const targetTiles = [a, b, corner].map((offset) => offset.map((v, i) => pos[i] + v)).map((pos2) => tilemap.At(...pos2));
+        const targetTiles = [a, b, corner].map((offset) => offset.map((v, i) => pos[i] + v)).map((pos2) => tilemap.At(pos2));
         const allAre = targetTiles.every((tile) => tile instanceof DirtPath);
         if (allAre)
           return false;
@@ -764,7 +750,7 @@ app.ruleset.push(...[
   {
     type: Grass,
     match: (tilemap, pos) => {
-      for (const neighbor of tilemap.AdjacentOf(...pos)) {
+      for (const neighbor of tilemap.NeighborsOf(pos)) {
         if (IsIsolatedPath(tilemap, neighbor))
           return false;
       }
@@ -773,10 +759,10 @@ app.ruleset.push(...[
   }
 ]);
 function IsIsolatedPath(tilemap, pos) {
-  if (!(tilemap.At(...pos) instanceof DirtPath))
+  if (!(tilemap.At(pos) instanceof DirtPath))
     return false;
-  const neighbors = Array.from(tilemap.AdjacentOf(...pos));
-  if (neighbors.every((pos2) => tilemap.At(...pos2) instanceof Grass))
+  const neighbors = Array.from(tilemap.NeighborsOf(pos));
+  if (neighbors.every((pos2) => tilemap.At(pos2) instanceof Grass))
     return true;
 }
 function InitializeApp() {
@@ -789,8 +775,10 @@ function setup() {
   createCanvas(...size);
   background("gray");
   app.on("iterate", (i) => {
-    if (i > CountKeys(tiles_exports) * 2 * app.tilemap.tileCount)
+    if (i > CountKeys(tiles_exports) * 2 * app.tilemap.tileCount) {
       app.ResetWfc();
+      app.tilemap.Render();
+    }
   });
 }
 function draw() {

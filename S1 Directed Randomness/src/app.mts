@@ -1,4 +1,4 @@
-import { Tile, Tilemap, Vector2 } from './tilemap.mjs';
+import { Tilemap, Vector2 } from './tilemap.mjs';
 import { Wfc, type Rule } from './wfc.mts';
 import { EventEmitter } from 'events';
 
@@ -33,21 +33,21 @@ export class App extends EventEmitter {
 			(_, i) => Math.floor(Math.random() * this.tilemap.size[i])
 		) as Vector2;
 
-		for(const step of this.wfc.Iterate(...startingPos)) {
+		for(const step of this.wfc.Iterate(startingPos)) {
 			const pos = step.pos;
 
 			this.tilemap.SetupTransform();
-			const updateTargets = [pos, ...this.tilemap.AdjacentOf(...pos, true)];
+			const updateTargets = [pos, ...this.tilemap.NeighborsOf(pos, true)];
 			for(const target of updateTargets) {
-				this.tilemap.UpdateAt(...target);
-				this.tilemap.RenderAt(...target);
+				this.tilemap.UpdateAt(target);
+				this.tilemap.RenderAt(target);
 			}
 
-			const tile = this.tilemap.At(...pos);
+			const tile = this.tilemap.At(pos);
 			console.log([
 				`Stack size: ${this.wfc.stackSize}`,
 				`${tile?.constructor?.name}@(${pos})`,
-				`${this.wfc.Validate(...pos) ? 'succeed' : 'failed'}`
+				`${this.wfc.Validate(pos) ? 'succeed' : 'failed'}`
 			].join(' '));
 
 
@@ -59,7 +59,7 @@ export class App extends EventEmitter {
 
 	ResetWfc() {
 		for(const pos of this.tilemap.Positions)
-			this.tilemap.Set(undefined, ...pos);
+			this.tilemap.Set(undefined, pos);
 		this.wfc = new Wfc(this.tilemap, this.ruleset);
 		this.finished = false;
 		this.iterator = this.IterateCoroutine();
