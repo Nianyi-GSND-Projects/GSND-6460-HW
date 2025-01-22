@@ -24,56 +24,42 @@ app.ruleset.push(...[
 					return false;
 			}
 
-			// Ban isolated tiles.
-			if(IsIsolatedPath(tilemap, pos))
-				return false;
-
-			return true;
-		}
-	},
-	{
-		type: Tiles.Grass,
-		match: (tilemap: Tilemap, pos: Vector2) => {
-			for(const neighbor of tilemap.NeighborsOf(pos)) {
-				if(IsIsolatedPath(tilemap, neighbor))
-					return false;
-			}
 			return true;
 		}
 	},
 ]);
 
-function IsIsolatedPath(tilemap: Tilemap, pos: Vector2) {
-	if(!(tilemap.At(pos) instanceof Tiles.DirtPath))
-		return false;
-	const neighbors = Array.from(tilemap.NeighborsOf(pos));
-	if(neighbors.every(pos => tilemap.At(pos) instanceof Tiles.Grass))
-		return true;
-}
-
-function InitializeApp() {
-}
-
 /* p5.js life cycle */
 
 function setup() {
-	app.Initialize();
-
 	const size = app.tilemap.position.map(
 		(v, i) => v * 2 + app.tilemap.pixelSize[i]
 	) as Vector2;
 	createCanvas(...size);
 	background('gray');
-	app.on('iterate', i => {
-		if(i > CountKeys(Tiles) * 2 * app.tilemap.tileCount) {
-			app.ResetWfc();
-			app.tilemap.Render();
-		}
-	});
+	
+	app.Initialize();
 }
 
 function draw() {
 	app.Step();
+}
+
+function keyPressed() {
+	switch(keyCode) {
+		case LEFT_ARROW:
+			app.Scroll([-1, 0]);
+			break;
+		case RIGHT_ARROW:
+			app.Scroll([+1, 0]);
+			break;
+		case UP_ARROW:
+			app.Scroll([0, -1]);
+			break;
+		case DOWN_ARROW:
+			app.Scroll([0, +1]);
+			break;
+	}
 }
 
 /* */

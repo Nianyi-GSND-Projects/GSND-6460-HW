@@ -3,7 +3,7 @@ banner=banner.js
 tsconfig=tsconfig.json
 target=bundle.cjs
 
-$(target): banner.js src/*.mts
+$(target): Makefile banner.js src/*.mts
 	@esbuild \
 		$(entry) \
 		--outfile=$(target) \

@@ -1,10 +1,10 @@
-import { Tilemap, Tile, Vector2 } from "./tilemap.mts";
-import * as Tiles from './tiles.mjs';
+import type App from './app.mts';
+import { Tilemap, Tile, Vector2 } from './tilemap.mts';
+import * as Tiles from './tiles.mts';
+const tileTypes = Object.values(Tiles);
 
 export type Step = {
 	pos: Vector2;
-	remainingTypes: { new(): Tile }[];
-	remainingNeighbors: Vector2[];
 };
 
 export type Rule<T extends Tile> = {
@@ -13,120 +13,80 @@ export type Rule<T extends Tile> = {
 };
 
 export class Wfc {
-	readonly tilemap: Tilemap;
-	readonly path: Step[] = [];
-	readonly ruleset: Rule<any>[];
-	temperature: number = 0;
+	readonly app: App;
+	targetTiles: Vector2[];
+	remainingTiles: Vector2[];
 
-	constructor(tilemap: Tilemap, ruleset: Rule<any>[]) {
-		this.tilemap = tilemap;
-		this.ruleset = ruleset;
+	get tilemap(): Tilemap {
+		return this.app.tilemap;
+	}
+	get ruleset(): Rule<any>[] {
+		return this.app.ruleset;
 	}
 
-	get stackSize(): number {
-		return this.path.length;
+	constructor(app: App) {
+		this.app = app;
+		this.targetTiles = Array.from(this.tilemap.Positions)
+			.filter(pos => !this.tilemap.At(pos));
 	}
 
-	*Iterate(pos: Vector2): Generator<Step> {
-		try {
-			for(const step of this.Explore(pos))
-				yield step;
-		}
-		catch(e) {
-			if(e === 'done')
-				return;
-			throw e;
-		}
-	}
+	*Iterate(): Generator<Vector2> {
+		while(true) {
+			// Make a copy of all target tiles.
+			this.remainingTiles = this.targetTiles.slice();
 
-	MakeStep(pos: Vector2): Step {
-		return {
-			pos,
-			remainingTypes: Object.values(Tiles),
-			remainingNeighbors: Array.from(this.tilemap.NeighborsOf(pos)).filter(pos => this.IsNeighborEmpty(pos)),
-		};
-	}
-
-	IsNeighborEmpty(pos: Vector2): boolean {
-		return this.tilemap.IsValidPos(pos) && !this.tilemap.At(pos);
-	}
-
-	*Explore(pos: Vector2): Generator<Step> {
-		const step = this.MakeStep(pos);
-		this.path.push(step); // Push the step to the stack.
-
-		while(step.remainingTypes.length) {
-			// Make the step.
-			const type = TakeRandom(step.remainingTypes);
-			const tile = new type();
-			this.tilemap.Set(tile, pos);
-			yield step;
-
-			// Skip if it doesn't work.
-			if(!this.Validate(pos)) {
-				this.temperature += 1;
+			// Perform one round of generation.
+			let bad = false;
+			while(this.remainingTiles.length) {
+				try {
+					yield this.PerformGeneration();
+				}
+				catch(e) {
+					if(e !== 'bad')
+						throw e;
+					// Mark if it gone bad.
+					bad = true;
+					break;
+				}
+			}
+			// If generation is bad, reset and try again.
+			if(bad) {
+				for(const pos of this.targetTiles)
+					this.tilemap.Set(undefined, pos);
 				continue;
 			}
-			this.temperature /= 2;
-			this.temperature = Math.max(0, this.temperature);
 
-			// Check if all tiles are valid.
-			if(this.stackSize >= this.tilemap.tileCount)
-				throw 'done';
-
-			// Explore new tiles.
-
-			// Start from neighbors for performance.
-			while(step.remainingNeighbors.length) {
-				const neighbor = TakeRandom(step.remainingNeighbors);
-				// if(!this.IsNeighborEmpty(...neighbor))
-				// 	continue;
-				for(const subStep of this.Explore(neighbor))
-					yield subStep;
-			}
-
-			// Then pick wild empty tiles.
-			const candidates = Array.from(this.tilemap.Positions)
-				.filter(pos => this.tilemap.At(pos) === undefined);
-
-			Shuffle(candidates); // Heuristic.
-			candidates.splice(3, candidates.length);
-
-			// TODO: Remove tested neighbors from the candidates.
-			while(candidates.length) {
-				const neighbor = TakeRandom(candidates);
-				// if(!this.IsNeighborEmpty(...neighbor))
-				// 	continue;
-				for(const subStep of this.Explore(neighbor))
-					yield subStep;
-			}
-		}
-
-		// All types are tried, no good, take steps back.
-		// The amount of the step is decided by the temperature.
-		const stepbackCount = Math.min(
-			this.stackSize - 1,
-			Math.floor(Math.exp(Math.random() * this.temperature * 0.1)),
-		);
-		for(let i = 0; i < stepbackCount; ++i) {
-			const stepback = this.path.pop();
-			this.tilemap.Set(undefined, stepback.pos); // Reset the tile.
-			yield stepback; // Pop the step from the stack.
+			return;
 		}
 	}
 
-	Validate(pos: Vector2): boolean {
-		if(!this.ValidateSingle(pos))
-			return false;
-		return true;
+	PerformGeneration(): Vector2 {
+		const candidates = this.remainingTiles.map((pos, i) => {
+			const types = tileTypes.filter(type => this.Validate(type, pos));
+			return { pos, validTypes: types, i };
+		});
+
+		// Choose a tile with the minimum possibilities,
+		// i.e. the essense of the WFC algorithm.
+		Shuffle(candidates);
+		candidates.sort((a, b) => a.validTypes.length - b.validTypes.length);
+		const candidate = candidates[0];
+
+		// We run into a dead-end.
+		if(candidate.validTypes.length === 0)
+			throw 'bad';
+
+		// Assign a tile for the candidate with a random valid type.
+		const type = PickRandom(candidate.validTypes);
+		this.tilemap.Set(new type(), candidate.pos);
+		// Don't forget to remove it from the remaining tiles.
+		this.remainingTiles.splice(candidate.i, 1);
+		return candidate.pos;
 	}
 
-	ValidateSingle(pos: Vector2): boolean {
-		const tile = this.tilemap.At(pos);
-		if(!tile)
-			return true;
+	Validate(type: { new(): Tile }, pos: Vector2): boolean {
 		for(const rule of this.ruleset) {
-			if(!(tile instanceof rule.type))
+			if(type !== rule.type)
 				continue;
 			if(!rule.match(this.tilemap, pos))
 				return false;
@@ -139,11 +99,6 @@ export class Wfc {
 
 function PickRandom<T>(arr: Array<T>): T {
 	return arr[Math.floor(Math.random() * arr.length)];
-}
-
-function TakeRandom<T>(arr: Array<T>): T | undefined {
-	const i = PickRandom([...arr.keys()]);
-	return arr.splice(i, 1)[0];
 }
 
 /**
@@ -163,5 +118,4 @@ function Shuffle<T>(arr: Array<T>) {
 			arr[randomIndex], arr[currentIndex]];
 	}
 }
-
 // #endregion
