@@ -20,4 +20,6 @@ To bundle the source code yourself:
 
 ## External credits
 
-- 
+- The array-shuffling algorithm used in [src/wfc.mts](./src/wfc.mts), ported from [StackOverflow](https://stackoverflow.com/questions/2450954/how-to-randomize-shuffle-a-javascript-array/2450976#2450976).
+
+	This function is borrowed from other places to save time because it's only used for achieving a very simple operation, totally not important in terms of the essense of the algorithm, which is the key I want to present in this HW.
