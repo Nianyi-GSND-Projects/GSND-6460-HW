@@ -12,9 +12,15 @@ export type Rule<T extends Tile> = {
 	match: (tilemap: Tilemap, pos: Vector2) => boolean;
 };
 
+/**
+ * @summary An instance of the Wave-function Collapse algorithm.
+ * @see https://en.wikipedia.org/wiki/Model_synthesis
+*/
 export class Wfc {
 	readonly app: App;
+	/** All the tiles that needs to be resolved by this instance. */
 	targetTiles: Vector2[];
+	/** The tiles that hasn't been resolved in the current try. */
 	remainingTiles: Vector2[];
 
 	get tilemap(): Tilemap {
@@ -30,7 +36,9 @@ export class Wfc {
 			.filter(pos => !this.tilemap.At(pos));
 	}
 
+	/** The core loop of the WFC algorithm. */
 	*Iterate(): Generator<Vector2> {
+		// Keep trying until it succeed.
 		while(true) {
 			// Make a copy of all target tiles.
 			this.remainingTiles = this.targetTiles.slice();
@@ -44,7 +52,8 @@ export class Wfc {
 				catch(e) {
 					if(e !== 'bad')
 						throw e;
-					// Mark if it gone bad.
+					// Set up a flag if it gone bad.
+					// It'd be easier if JavaScript supports named blocks.
 					bad = true;
 					break;
 				}
@@ -56,10 +65,16 @@ export class Wfc {
 				continue;
 			}
 
+			// Suceed. Exiting.
 			return;
 		}
 	}
 
+	/**
+	 * Decide the type of a tile with minimal possibilities.
+	 * i.e. the atomic operation in the WFC algorithm.
+	 * Failed if 'bad' was thrown.
+	 */
 	PerformGeneration(): Vector2 {
 		const candidates = this.remainingTiles.map((pos, i) => {
 			const types = tileTypes.filter(type => this.Validate(type, pos));
@@ -84,6 +99,7 @@ export class Wfc {
 		return candidate.pos;
 	}
 
+	/** See if assigning the specified type to the specified position would be valid. */
 	Validate(type: { new(): Tile }, pos: Vector2): boolean {
 		for(const rule of this.ruleset) {
 			if(type !== rule.type)

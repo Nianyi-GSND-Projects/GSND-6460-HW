@@ -1,6 +1,11 @@
 import { Tilemap, Tile, type Vector2 } from './tilemap.mjs';
 
+/**
+ * A kind of tile that is brown in the background with white color-stroked paths.
+ * The paths will automatically connect when two of this kind of tiles are adjacent.
+ */
 export class DirtPath extends Tile {
+	/** The internal registry for the connectivity to adjacent tiles. */
 	connectivity = [false, false, false, false];
 
 	constructor() {
@@ -33,6 +38,7 @@ export class DirtPath extends Tile {
 	}
 }
 
+/** Simple green-colored grass tile. */
 export class Grass extends Tile {
 	override Render() {
 		fill('#289f4c');

@@ -3,7 +3,7 @@
  * 
  * This program is bundled from source code automatically.
  * For the original code comments and more information about the source
- * project, see the URL below.
+ * project, open the URL below.
  * 
  * https://github.com/Nianyi-GSND-Projects/GSND-6460-HW/tree/master/S1%20Directed%20Randomness/
  */
@@ -24,28 +24,37 @@ var Tilemap = class _Tilemap {
   }
   /** The position of the map on canvas by pixel. */
   position = [10, 10];
-  tiles = [];
+  /**
+   * The internal registry of all tiles.
+   * Shouldn't be accessed externally.
+   */
+  #tiles = [];
   constructor() {
-    this.tiles = Array(this.size[0]).fill(0).map(
+    this.#tiles = Array(this.size[0]).fill(0).map(
       () => Array(this.size[1]).fill(void 0)
     );
   }
+  /** How many places for tile (including the empty ones) are there in this map. */
   get tileCount() {
     return this.size[0] * this.size[1];
   }
+  /** Check if a position makes sense in this map. */
   IsValidPos(pos) {
     return !pos.some((v, i) => v < 0 || v >= this.size[i]);
   }
+  /** Get the tile at the specified position. */
   At(pos) {
     if (!this.IsValidPos(pos))
       return null;
-    return this.tiles[pos[0]][pos[1]];
+    return this.#tiles[pos[0]][pos[1]];
   }
+  /** Set the tile at the specified position. */
   Set(tile, pos) {
     if (!this.IsValidPos(pos))
       return;
-    this.tiles[pos[0]][pos[1]] = tile;
+    this.#tiles[pos[0]][pos[1]] = tile;
   }
+  /** Iterate through all valid positions in this map. */
   get Positions() {
     return function* () {
       for (let x = 0; x < this.size[0]; ++x) {
@@ -55,6 +64,7 @@ var Tilemap = class _Tilemap {
       }
     }.call(this);
   }
+  /** Iterate through all the tiles (not including the empty ones) in this map. */
   get Tiles() {
     return function* () {
       for (const pos of this.Positions()) {
@@ -71,12 +81,17 @@ var Tilemap = class _Tilemap {
     [-1, 0],
     [0, -1]
   ];
+  // Northwest, northeast, southwest, southeast.
   static corners = [
     [-1, -1],
     [1, -1],
     [-1, 1],
     [1, 1]
   ];
+  /** 
+   * Yield the adjecent positions of specified positions.
+   * @param includeCorners If true, the adjacent corners would be yield as well.
+   */
   *NeighborsOf(pos, includeCorners = false) {
     const offsets = _Tilemap.directNeighbors.slice();
     if (includeCorners)
@@ -88,10 +103,12 @@ var Tilemap = class _Tilemap {
       yield neighbor;
     }
   }
+  /** Apply the offset in the bases to draw the tiles. */
   SetupTransform() {
     resetMatrix();
     translate(...this.position);
   }
+  /** Draw every tile. */
   Render() {
     push();
     this.SetupTransform();
@@ -102,6 +119,7 @@ var Tilemap = class _Tilemap {
       this.RenderAt(pos);
     pop();
   }
+  /** Render one single tile at specified position. */
   RenderAt(pos) {
     const tile = this.At(pos);
     push();
@@ -116,10 +134,12 @@ var Tilemap = class _Tilemap {
       clear();
     pop();
   }
+  /** Update the internal states of every tile. */
   Update() {
     for (const pos of this.Positions)
       this.UpdateAt(pos);
   }
+  /** Update one single tile at specified position. */
   UpdateAt(pos) {
     const tile = this.At(pos);
     if (!tile)
@@ -142,6 +162,7 @@ __export(tiles_exports, {
   Grass: () => Grass
 });
 var DirtPath = class _DirtPath extends Tile {
+  /** The internal registry for the connectivity to adjacent tiles. */
   connectivity = [false, false, false, false];
   constructor() {
     super();
@@ -181,7 +202,9 @@ var Grass = class extends Tile {
 var tileTypes = Object.values(tiles_exports);
 var Wfc = class {
   app;
+  /** All the tiles that needs to be resolved by this instance. */
   targetTiles;
+  /** The tiles that hasn't been resolved in the current try. */
   remainingTiles;
   get tilemap() {
     return this.app.tilemap;
@@ -193,6 +216,7 @@ var Wfc = class {
     this.app = app2;
     this.targetTiles = Array.from(this.tilemap.Positions).filter((pos) => !this.tilemap.At(pos));
   }
+  /** The core loop of the WFC algorithm. */
   *Iterate() {
     while (true) {
       this.remainingTiles = this.targetTiles.slice();
@@ -215,6 +239,11 @@ var Wfc = class {
       return;
     }
   }
+  /**
+   * Decide the type of a tile with minimal possibilities.
+   * i.e. the atomic operation in the WFC algorithm.
+   * Failed if 'bad' was thrown.
+   */
   PerformGeneration() {
     const candidates = this.remainingTiles.map((pos, i) => {
       const types = tileTypes.filter((type2) => this.Validate(type2, pos));
@@ -230,6 +259,7 @@ var Wfc = class {
     this.remainingTiles.splice(candidate.i, 1);
     return candidate.pos;
   }
+  /** See if assigning the specified type to the specified position would be valid. */
   Validate(type, pos) {
     for (const rule of this.ruleset) {
       if (type !== rule.type)
@@ -261,10 +291,11 @@ var App = class {
   tilemap = new Tilemap();
   ruleset = [];
   iterator = null;
-  /* Life cycle */
-  Initialize() {
-    this.FillEmpty();
-  }
+  /* Interfaces */
+  /**
+   * Step one frame forward.
+   * Should be called in draw().
+   */
   Step() {
     if (!this.iterator)
       return;
@@ -272,7 +303,8 @@ var App = class {
     if (done)
       this.iterator = null;
   }
-  Scroll(offset) {
+  /** Pan the entire map to specified direction. */
+  PanMap(offset) {
     const pairs = Array.from(this.tilemap.Positions).map((pos) => ({
       pos,
       tile: this.tilemap.At(pos.map((v, i) => v + offset[i]))
@@ -281,6 +313,10 @@ var App = class {
       this.tilemap.Set(tile, pos);
     this.FillEmpty();
   }
+  /**
+   * Initiate the process of filling all empty tiles.
+   * The field `iterator` then needs to be manually iterated.
+   */
   FillEmpty() {
     this.iterator = this.#Wfc();
   }
@@ -322,7 +358,7 @@ function setup() {
   );
   createCanvas(...size);
   background("gray");
-  app.Initialize();
+  app.FillEmpty();
 }
 function draw() {
   app.Step();
@@ -330,19 +366,16 @@ function draw() {
 function keyPressed() {
   switch (keyCode) {
     case LEFT_ARROW:
-      app.Scroll([-1, 0]);
+      app.PanMap([-1, 0]);
       break;
     case RIGHT_ARROW:
-      app.Scroll([1, 0]);
+      app.PanMap([1, 0]);
       break;
     case UP_ARROW:
-      app.Scroll([0, -1]);
+      app.PanMap([0, -1]);
       break;
     case DOWN_ARROW:
-      app.Scroll([0, 1]);
+      app.PanMap([0, 1]);
       break;
   }
-}
-function CountKeys(obj) {
-  return Array.from(Object.keys(obj)).length;
 }

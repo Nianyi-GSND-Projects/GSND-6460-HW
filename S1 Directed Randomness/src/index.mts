@@ -1,9 +1,14 @@
+/**
+ * The entry file of the entire program.
+ * All configurations and p5.js life cycle functions are written here.
+ */
+
 import './p5.mts';
 import App from './app.mts';
 import { Tilemap, Vector2 } from './tilemap.mjs';
 import * as Tiles from './tiles.mjs';
 
-/* App */
+/* App configurations */
 
 const app = new App();
 
@@ -32,38 +37,36 @@ app.ruleset.push(...[
 /* p5.js life cycle */
 
 function setup() {
+	// Create the canvas and resize it to the appropriate size.
 	const size = app.tilemap.position.map(
 		(v, i) => v * 2 + app.tilemap.pixelSize[i]
 	) as Vector2;
 	createCanvas(...size);
 	background('gray');
-	
-	app.Initialize();
+
+	// Initiate the first time filling.
+	app.FillEmpty();
 }
 
 function draw() {
+	// Advances to the next frame.
 	app.Step();
 }
 
 function keyPressed() {
+	// Pan the map according to keyboard input.
 	switch(keyCode) {
 		case LEFT_ARROW:
-			app.Scroll([-1, 0]);
+			app.PanMap([-1, 0]);
 			break;
 		case RIGHT_ARROW:
-			app.Scroll([+1, 0]);
+			app.PanMap([+1, 0]);
 			break;
 		case UP_ARROW:
-			app.Scroll([0, -1]);
+			app.PanMap([0, -1]);
 			break;
 		case DOWN_ARROW:
-			app.Scroll([0, +1]);
+			app.PanMap([0, +1]);
 			break;
 	}
-}
-
-/* */
-
-function CountKeys(obj: Object): number {
-	return Array.from(Object.keys(obj)).length;
 }

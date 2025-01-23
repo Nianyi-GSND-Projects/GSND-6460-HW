@@ -8,12 +8,12 @@ export class App {
 	ruleset: Rule<any>[] = [];
 	iterator: Generator = null;
 
-	/* Life cycle */
+	/* Interfaces */
 
-	Initialize() {
-		this.FillEmpty();
-	}
-
+	/**
+	 * Step one frame forward.
+	 * Should be called in draw().
+	 */
 	Step() {
 		if(!this.iterator)
 			return;
@@ -22,7 +22,8 @@ export class App {
 			this.iterator = null;
 	}
 
-	Scroll(offset: Vector2) {
+	/** Pan the entire map to specified direction. */
+	PanMap(offset: Vector2) {
 		const pairs = Array.from(this.tilemap.Positions)
 			.map(pos => ({
 				pos,
@@ -35,6 +36,10 @@ export class App {
 		this.FillEmpty();
 	}
 
+	/**
+	 * Initiate the process of filling all empty tiles.
+	 * The field `iterator` then needs to be manually iterated.
+	 */
 	FillEmpty() {
 		this.iterator = this.#Wfc();
 	}
