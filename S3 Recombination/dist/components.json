@@ -28,5 +28,20 @@
 		"name": "round",
 		"type": "right eye",
 		"pivot": [2, 2]
+	},
+	{
+		"name": "smile",
+		"type": "mouth",
+		"pivot": [5, 2]
+	},
+	{
+		"name": "line",
+		"type": "mouth",
+		"pivot": [3, 1]
+	},
+	{
+		"name": "o",
+		"type": "mouth",
+		"pivot": [3, 3]
 	}
 ]

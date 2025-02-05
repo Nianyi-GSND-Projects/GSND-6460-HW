@@ -2,7 +2,7 @@ import p5 from './p5.mts';
 import { type Vector } from './vector.mts';
 
 type Component = {
-	type: 'face' | 'left eye' | 'right eye';
+	type: 'face' | 'left eye' | 'right eye' | 'mouth';
 	name: string;
 	url: string;
 	pivot: Vector<2>;
@@ -94,6 +94,10 @@ export class App {
 				.map(name => ['left eye', 'right eye'].map(type => this.#components.get(type as Component['type']).get(name))),
 			MakeRadioOption('eye-shape'),
 		);
+		SetupRadioList(this.#$settings['mouth-shape'],
+			this.#components.get('mouth').values(),
+			MakeRadioOption('mouth-shape'),
+		);
 	}
 
 	//#endregion
@@ -120,9 +124,25 @@ export class App {
 	/* Drawing */
 	//#region
 
+	GetString(fieldName: string): string {
+		return this.#$settings[fieldName].value;
+	}
+	GetNumber(fieldName: string): number {
+		return +this.GetString(fieldName);
+	}
+	GetShape(collection: Component['type'], fieldName: string): Component {
+		return this.#components.get(collection).get(this.#$settings[fieldName].value);
+	}
+
 	readonly baseSize = [40, 40] as Vector<2>;
 	get scale(): number {
 		return this.GetNumber('scale');
+	}
+	get bgColor(): string {
+		return this.GetString('bg-color');
+	}
+	get faceColor(): string {
+		return this.GetString('face-color');
 	}
 	get faceShape(): Component {
 		return this.GetShape('face', 'face-shape');
@@ -136,18 +156,17 @@ export class App {
 	get eyeSplit(): number {
 		return this.GetNumber('eye-split');
 	}
-
-	GetNumber(fieldName: string): number {
-		return +this.#$settings[fieldName].value;
+	get mouthShape(): Component {
+		return this.GetShape('mouth', 'mouth-shape');
 	}
-	GetShape(collection: Component['type'], fieldName: string): Component {
-		return this.#components.get(collection).get(this.#$settings[fieldName].value);
+	get mouthDrop(): number {
+		return this.GetNumber('mouth-drop');
 	}
 
 	Draw() {
 		// Clear the canvas.
-		clear(0, 0, 0, 0);
 		resizeCanvas(...(this.baseSize.map(v => v * this.scale) as Vector<2>));
+		background(this.bgColor);
 
 		// Set up the matrix.
 		resetMatrix();
@@ -157,11 +176,16 @@ export class App {
 
 		// Draw the face.
 		// The face shape.
+		tint(this.faceColor);
 		this.DrawComponent(this.faceShape);
+		noTint();
 
 		// Eyes.
 		this.DrawComponent(this.eyeShapes[0], [-this.eyeSplit, -this.eyeHeight]);
 		this.DrawComponent(this.eyeShapes[1], [+this.eyeSplit, -this.eyeHeight]);
+
+		// Mouth.
+		this.DrawComponent(this.mouthShape, [0, 8 + this.mouthDrop]);
 	}
 
 	DrawComponent(component: Component, pos: Vector<2> = [0, 0]) {

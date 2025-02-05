@@ -10,15 +10,39 @@
 		<main>
 			<h3>Settings</h3>
 			<form id="settings">
-				<p>Scale: <input name="scale" type="range" value="4" min="1" max="10" step="1" /></p>
+
+				<!-- Generic -->
+				<p>
+					Scale:
+					<input name="scale" type="range" value="4" min="1" max="10" step="1" />
+				</p>
+				<p>
+					Background color:
+					<input name="bg-color" type="color" value="#dfc8a9" />
+				</p>
+	
+				<!-- Face -->
 				<fieldset name="face-shape" class="shape-select">
 					<legend>Face shape</legend>
 				</fieldset>
+				<p>
+					Face color:
+					<input name="face-color" type="color" value="#ffffff" />
+				</p>
+
+				<!-- Eyes -->
 				<fieldset name="eye-shape" class="shape-select">
 					<legend>Eye shape</legend>
 				</fieldset>
 				<p>Eye height: <input name="eye-height" type="range" value="2" min="-4" max="6" step="1" /></p>
 				<p>Eye split: <input name="eye-split" type="range" value="8" min="2" max="20" step="1" /></p>
+
+				<!-- Mouth -->
+				<fieldset name="mouth-shape" class="shape-select">
+					<legend>Mouth shape</legend>
+				</fieldset>
+				<p>Mouth drop: <input name="mouth-drop" type="range" value="0" min="-5" max="5" step="1" /></p>
+
 			</form>
 		</main>
 		<script src="./index.cjs"></script>

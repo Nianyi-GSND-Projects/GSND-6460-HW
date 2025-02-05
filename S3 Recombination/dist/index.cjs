@@ -74,6 +74,11 @@ var App = class {
       Array.from(this.#components.get("left eye").keys()).map((name) => ["left eye", "right eye"].map((type) => this.#components.get(type).get(name))),
       MakeRadioOption("eye-shape")
     );
+    SetupRadioList(
+      this.#$settings["mouth-shape"],
+      this.#components.get("mouth").values(),
+      MakeRadioOption("mouth-shape")
+    );
   }
   //#endregion
   /* Life cycle */
@@ -93,9 +98,24 @@ var App = class {
   //#endregion
   /* Drawing */
   //#region
+  GetString(fieldName) {
+    return this.#$settings[fieldName].value;
+  }
+  GetNumber(fieldName) {
+    return +this.GetString(fieldName);
+  }
+  GetShape(collection, fieldName) {
+    return this.#components.get(collection).get(this.#$settings[fieldName].value);
+  }
   baseSize = [40, 40];
   get scale() {
     return this.GetNumber("scale");
+  }
+  get bgColor() {
+    return this.GetString("bg-color");
+  }
+  get faceColor() {
+    return this.GetString("face-color");
   }
   get faceShape() {
     return this.GetShape("face", "face-shape");
@@ -109,22 +129,25 @@ var App = class {
   get eyeSplit() {
     return this.GetNumber("eye-split");
   }
-  GetNumber(fieldName) {
-    return +this.#$settings[fieldName].value;
+  get mouthShape() {
+    return this.GetShape("mouth", "mouth-shape");
   }
-  GetShape(collection, fieldName) {
-    return this.#components.get(collection).get(this.#$settings[fieldName].value);
+  get mouthDrop() {
+    return this.GetNumber("mouth-drop");
   }
   Draw() {
-    clear(0, 0, 0, 0);
     resizeCanvas(...this.baseSize.map((v) => v * this.scale));
+    background(this.bgColor);
     resetMatrix();
     scale(this.scale, this.scale);
     noSmooth();
     translate(...this.baseSize.map((v) => Math.floor(v / 2)));
+    tint(this.faceColor);
     this.DrawComponent(this.faceShape);
+    noTint();
     this.DrawComponent(this.eyeShapes[0], [-this.eyeSplit, -this.eyeHeight]);
     this.DrawComponent(this.eyeShapes[1], [+this.eyeSplit, -this.eyeHeight]);
+    this.DrawComponent(this.mouthShape, [0, 8 + this.mouthDrop]);
   }
   DrawComponent(component, pos = [0, 0]) {
     image(component.image, ...pos.map((v, i) => v - component.pivot[i]));
