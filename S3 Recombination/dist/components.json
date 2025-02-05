@@ -1,0 +1,32 @@
+[
+	{
+		"name": "rectangular",
+		"type": "face",
+		"pivot": [13, 17]
+	},
+	{
+		"name": "round",
+		"type": "face",
+		"pivot": [16, 16]
+	},
+	{
+		"name": "line",
+		"type": "left eye",
+		"pivot": [3, 1]
+	},
+	{
+		"name": "round",
+		"type": "left eye",
+		"pivot": [3, 2]
+	},
+	{
+		"name": "line",
+		"type": "right eye",
+		"pivot": [3, 1]
+	},
+	{
+		"name": "round",
+		"type": "right eye",
+		"pivot": [2, 2]
+	}
+]

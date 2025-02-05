@@ -1,0 +1,10 @@
+{
+	"compilerOptions": {
+		"rootDir": "./src/",
+		"lib": ["ESNext", "DOM"],
+		"module": "NodeNext",
+		"moduleResolution": "nodenext",
+		"allowImportingTsExtensions": true,
+		"noEmit": true,
+	},
+}

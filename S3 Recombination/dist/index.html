@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.11.1/p5.js"></script>
+		<script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.11.1/addons/p5.sound.min.js"></script>
+		<link rel="stylesheet" type="text/css" href="./index.css" />
+		<meta charset="utf-8" />
+	</head>
+	<body>
+		<main>
+			<h3>Settings</h3>
+			<form id="settings">
+				<p>Scale: <input name="scale" type="range" value="4" min="1" max="10" step="1" /></p>
+				<fieldset name="face-shape" class="shape-select">
+					<legend>Face shape</legend>
+				</fieldset>
+				<fieldset name="eye-shape" class="shape-select">
+					<legend>Eye shape</legend>
+				</fieldset>
+				<p>Eye height: <input name="eye-height" type="range" value="2" min="-4" max="6" step="1" /></p>
+				<p>Eye split: <input name="eye-split" type="range" value="8" min="2" max="20" step="1" /></p>
+			</form>
+		</main>
+		<script src="./index.cjs"></script>
+	</body>
+</html>
