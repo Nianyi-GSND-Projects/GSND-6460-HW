@@ -72,19 +72,23 @@ export class App {
 
 	async #FetchResources() {
 		const components = await (await fetch('components.json')).json() as Component[];
+		const imageLoaders: Promise<void>[] = [];
 		for(const component of components) {
 			component.url = `component/${component.type}/${component.name}.png`;
-			component.image = loadImage(component.url);
+			imageLoaders.push(new Promise((res, rej) => {
+				component.image = loadImage(component.url, () => res(), err => rej(err));
+			}));
 			const type = component.type;
 			if(!this.#components.has(type))
 				this.#components.set(type, new Map());
 			this.#components.get(type).set(component.name, component);
 		}
+		await Promise.allSettled(imageLoaders);
 	}
 
 	#SetupUi() {
 		this.#$settings = document.forms['settings'];
-		this.#$settings.addEventListener('change', () => this.#invalidated = true);
+		this.#$settings.addEventListener('input', () => this.#invalidated = true);
 		SetupRadioList(this.#$settings['face-shape'],
 			this.#components.get('face').values(),
 			MakeRadioOption('face-shape'),
