@@ -52,8 +52,8 @@ export class App {
 			this.ruleset = rulesets.find(ruleset => ruleset.name === name);
 
 			NE.Clear(this.#$settings);
-			this.ruleset.SetupSettings(this.#$settings);
-			this.ruleset.CreateTree();
+			this.ruleset.SetupUi(this.#$settings);
+			this.ruleset.CreateNewTree();
 			this.ScheduleRedraw();
 		});
 
@@ -82,6 +82,7 @@ export class App {
 	#growingCoroutine: Generator = null;
 
 	ScheduleRedraw() {
+		this.ruleset.CreateNewTree();
 		this.#growingCoroutine = this.ruleset.AutoGrow();
 		this.#invalidated = true;
 	}
@@ -95,7 +96,7 @@ export class App {
 		background(255);
 		resetMatrix();
 
-		this.ruleset.tree.Draw();
+		this.ruleset.Draw();
 
 		const { done } = this.#growingCoroutine.next();
 		return !done;

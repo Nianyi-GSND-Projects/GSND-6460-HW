@@ -15,18 +15,7 @@ export abstract class ShapeTree {
 	protected abstract BeginDrawing(): void;
 	Draw(): void {
 		this.BeginDrawing();
-		this.#RecursivelyDraw(this.#root);
-	}
-	#RecursivelyDraw(node: Node) {
-		if(!node)
-			return;
-		node.Enter();
-		node.Draw();
-		if(!node.isTerminal && node.children) {
-			for(const child of node.children)
-				this.#RecursivelyDraw(child);
-		}
-		node.Exit();
+		this.#root.Draw();
 	}
 }
 
@@ -38,24 +27,17 @@ export abstract class Node {
 	get children(): Iterable<Node> {
 		return this.#children?.values() ?? [];
 	}
-	#isTerminal: boolean;
-	get isTerminal(): boolean {
-		return this.#isTerminal;
-	}
 
 	get leaves(): Iterable<Node> {
-		if(this.isTerminal)
+		if(!this.#children || !this.#children.length)
 			return [this];
+		const self = this;
 		return function *() {
-			for(const child of this.children) {
-				for(const node of child.sentence)
+			for(const child of self.children) {
+				for(const node of child.leaves)
 					yield node;
 			}
 		}();
-	}
-
-	constructor(isTerminal: boolean) {
-		this.#isTerminal = isTerminal;
 	}
 
 	//#endregion
@@ -74,8 +56,6 @@ export abstract class Node {
 			yield child;
 		}
 		for(const child of this.children) {
-			if(child.isTerminal)
-				continue;
 			for(const node of child.Grow(layerCount - 1))
 				yield node;
 		}
@@ -93,8 +73,6 @@ export abstract class Node {
 	/* Drawing */
 	//#region
 
-	abstract Enter(): void;
-	abstract Exit(): void;
 	abstract Draw(): void;
 
 	//#endregion

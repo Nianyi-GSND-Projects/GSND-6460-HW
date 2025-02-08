@@ -6,22 +6,26 @@ import { CreateInputEx } from '../utils.mts';
 
 class LSystemRuleset implements Ruleset {
 	readonly name = 'L-system';
-	rule: string = 'F+F-';
+
+	// Settings
+	rule: string = 'f[++F][-ffF][----F]';
 	angle: number = 10;
-	length: number = 10;
+	length: number = 7;
 	depth: number = 4;
-	attenuation: number = 1;
+	attenuation: number = 0.5;
+
+	$sentence: HTMLElement;
 
 	#tree: ShapeTree;
 	get tree(): ShapeTree {
 		return this.#tree;
 	}
 
-	CreateTree() {
+	CreateNewTree() {
 		return this.#tree = new LSystem();
 	};
 
-	SetupSettings($form: HTMLFormElement) {
+	SetupUi($form: HTMLFormElement) {
 		NE.Modify($form, {
 			children: [
 				CreateInputEx('Rule', this, 'rule', 'string'),
@@ -37,6 +41,7 @@ class LSystemRuleset implements Ruleset {
 				CreateInputEx('Attenuation', this, 'attenuation', 'number', {
 					min: 0, max: 1, step: 0.01,
 				}),
+				this.$sentence = NE.Create('p'),
 			],
 		});
 	};
@@ -45,6 +50,13 @@ class LSystemRuleset implements Ruleset {
 		if(!this.tree)
 			return null;
 		return this.tree.root.Grow(this.depth);
+	}
+
+	Draw(): void {
+		this.tree.Draw();
+		lSystemRuleset.$sentence.innerText = Array.from(this.#tree.root.leaves)
+			.map(node => (node as LSystemNode).type)
+			.join('');
 	}
 }
 
@@ -60,6 +72,7 @@ class LSystem extends ShapeTree {
 	}
 
 	protected override BeginDrawing(): void {
+		angleMode(DEGREES);
 		translate(width / 2, height);
 		scale(1, -1);
 		scale(lSystemRuleset.length);
@@ -69,7 +82,7 @@ class LSystem extends ShapeTree {
 
 class LSystemNode extends Node {
 	readonly parent: LSystemNode;
-	readonly turns: number;
+	type: string;
 
 	get level(): number {
 		if(!this.parent)
@@ -81,28 +94,49 @@ class LSystemNode extends Node {
 		return lSystemRuleset.length * Math.pow(lSystemRuleset.attenuation, this.level);
 	}
 
-	constructor(parent: LSystemNode = null, turns: number = 0) {
-		super(false);
+	constructor(parent: LSystemNode = null, type: string = 'F') {
+		super();
 
 		this.parent = parent;
-		this.turns = turns;
+		this.type = type;
 	}
 
-	protected *GrowOnce(): Iterable<Node> {
-		yield new LSystemNode(this, -1);
-		yield new LSystemNode(this, 1);
+	protected override *GrowOnce(): Iterable<Node> {
+		if(this.type !== 'F')
+			return;
+		this.type = 'f';
+
+		for(const type of lSystemRuleset.rule) {
+			yield new LSystemNode(this, type);
+		}
 	}
 
-	Enter(): void {
-		push();
-		angleMode(DEGREES);
-		rotate(lSystemRuleset.angle * this.turns);
-		translate(0, this.length);
-	}
-	Exit(): void {
-		pop();
-	}
-	Draw(): void {
-		line(0, -this.length, 0, 0);
+	override Draw(): void {
+		switch(this.type) {
+			case 'F':
+				break;
+			case 'f':
+				translate(0, this.length);
+				line(0, -this.length, 0, 0);
+				break;
+			case '+':
+				rotate(+lSystemRuleset.angle);
+				break;
+			case '-':
+				rotate(-lSystemRuleset.angle);
+				break;
+			case '[':
+				push();
+				break;
+			case ']':
+				pop();
+				break;
+			default:
+				throw new EvalError(`"${this.type}" is not a recognizable instruction.`);
+		}
+		if(this.children) {
+			for(const child of this.children)
+				child.Draw();
+		}
 	}
 }

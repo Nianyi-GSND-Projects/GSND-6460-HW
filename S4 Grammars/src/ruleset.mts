@@ -3,9 +3,10 @@ import { type ShapeTree } from './formal-grammar.mts';
 export interface Ruleset {
 	readonly name: string;
 	get tree(): ShapeTree;
-	CreateTree(): ShapeTree;
-	SetupSettings($form: HTMLFormElement): void;
+	CreateNewTree(): ShapeTree;
+	SetupUi($form: HTMLFormElement): void;
 	AutoGrow(): Generator;
+	Draw(): void;
 };
 
 export default Ruleset;
