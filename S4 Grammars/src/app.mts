@@ -15,7 +15,7 @@ export class App {
 	/* Formal grammar */
 	//#region
 
-	ruleset: Ruleset = null;
+	ruleset: Ruleset<any> = null;
 
 	//#endregion
 
@@ -26,6 +26,9 @@ export class App {
 	#invalidated: boolean = true;
 
 	async Initialize() {
+		for(const ruleset of rulesets) {
+			ruleset.onChangedInternally.push(() => this.ScheduleRedraw());
+		}
 		this.#SetupUi();
 		this.#ready = true;
 	}
@@ -51,9 +54,6 @@ export class App {
 			const name: string = this.#$systems[App.#systemNameFormKey].value;
 			this.ruleset = rulesets.find(ruleset => ruleset.name === name);
 
-			NE.Clear(this.#$settings);
-			this.ruleset.SetupUi(this.#$settings);
-			this.ruleset.CreateNewTree();
 			this.ScheduleRedraw();
 		});
 
@@ -64,7 +64,9 @@ export class App {
 	async Start() {
 		await WaitUntil(() => this.#ready);
 		createCanvas(1, 1);
-		// this.#$systems.querySelector(`input[name=${App.#systemNameFormKey}]`).setAttribute('checked', '');
+
+		const firstPreset = this.#$systems.querySelector(`input[name=${App.#systemNameFormKey}]`);
+		(firstPreset as any).click();
 	}
 
 	StepFrame() {
@@ -82,7 +84,10 @@ export class App {
 	#growingCoroutine: Generator = null;
 
 	ScheduleRedraw() {
+		NE.Clear(this.#$settings);
+		this.ruleset.SetupUi(this.#$settings);
 		this.ruleset.CreateNewTree();
+
 		this.#growingCoroutine = this.ruleset.AutoGrow();
 		this.#invalidated = true;
 	}
@@ -96,10 +101,16 @@ export class App {
 		background(255);
 		resetMatrix();
 
-		this.ruleset.Draw();
-
-		const { done } = this.#growingCoroutine.next();
-		return !done;
+		try {
+			this.ruleset.Draw();
+			const { done } = this.#growingCoroutine.next();
+			return !done;
+		}
+		catch(e)
+		{
+			console.error(e);
+			return false;
+		}
 	}
 
 	//#endregion

@@ -6,3 +6,6 @@ const app = new App();
 window.preload = App.prototype.Initialize.bind(app);
 window.setup = App.prototype.Start.bind(app);
 window.draw = App.prototype.StepFrame.bind(app);
+
+window['app'] = app;
+console.log(app);

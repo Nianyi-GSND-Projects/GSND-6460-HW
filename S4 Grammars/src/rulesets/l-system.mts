@@ -4,17 +4,56 @@ import * as NE from '@nianyi-wang/element';
 import '../p5.mts';
 import { CreateInputEx } from '../utils.mts';
 
-class LSystemRuleset implements Ruleset {
+type LSystemSettings = {
+	name?: string;
+	seed: string;
+	rules: [string, string][];
+	angle: number;
+	length: number;
+	depth: number;
+	attenuation: number;
+	startingX: number;
+	startingY: number;
+}
+
+const presets: LSystemSettings[] = [
+	{
+		name: 'Tree',
+		seed: 'F',
+		rules: [
+			['F', 'f[++F][-ffF][----F]']
+		],
+		angle: 10,
+		length: 7,
+		depth: 4,
+		attenuation: 0.5,
+		startingX: 0.5,
+		startingY: 0.0,
+	},
+	{
+		name: 'Dragon Curve',
+		seed: 'X',
+		rules: [
+			['X','X+YF+'],
+			['Y','-FX-Y'],
+		],
+		angle: 90,
+		length: 2,
+		depth: 8,
+		attenuation: 1,
+		startingX: 0.5,
+		startingY: 0.5,
+	},
+];
+
+class LSystemRuleset implements Ruleset<LSystemSettings> {
 	readonly name = 'L-system';
 
 	// Settings
-	rule: string = 'f[++F][-ffF][----F]';
-	angle: number = 10;
-	length: number = 7;
-	depth: number = 4;
-	attenuation: number = 0.5;
+	settings: LSystemSettings = presets[0];
 
 	$sentence: HTMLElement;
+	onChangedInternally: Function[] = [];
 
 	#tree: ShapeTree;
 	get tree(): ShapeTree {
@@ -25,10 +64,55 @@ class LSystemRuleset implements Ruleset {
 		return this.#tree = new LSystem();
 	};
 
+	ApplyPreset(preset: LSystemSettings): void {
+		if(!preset) {
+			console.warn('Preset is null.');
+			return;
+		}
+
+		this.settings = preset;
+		this.#TriggerOnChangedInternally();
+	}
+
 	SetupUi($form: HTMLFormElement) {
 		NE.Modify($form, {
 			children: [
-				CreateInputEx('Rule', this, 'rule', 'string'),
+				NE.Create('p', {
+					children: [
+						NE.Create('span', { text: 'Presets: ' }),
+						...presets.map(preset => NE.Create('button', {
+							text: preset.name,
+							attributes: {
+								type: 'button',
+								'data-preset-name': preset.name
+							},
+							on: {
+								click: ev => {
+									const preset = presets.find(p => p.name === (ev.target as Element).getAttribute('data-preset-name'));
+									this.ApplyPreset(preset);
+								},
+							},
+						})),
+					],
+				}),
+				NE.Create('p', {
+					children: [
+						NE.Create('span', { text: 'Rules: '}),
+						NE.Create('input', {
+							attributes: {
+								value: this.settings.rules.map(r => r.join('>')).join(';'),
+								type: 'text',
+							},
+							on: {
+								input: ev => {
+									const value = (ev.target as HTMLInputElement).value;
+									this.settings.rules = value.split(';').map(r => r.split('>') as [string, string]);
+								}
+							}
+						}),
+					],
+				}),
+				CreateInputEx('Seed', this, 'seed', 'string'),
 				CreateInputEx('Depth', this, 'depth', 'number', {
 					min: 0, max: 10, step: 1,
 				}),
@@ -41,7 +125,18 @@ class LSystemRuleset implements Ruleset {
 				CreateInputEx('Attenuation', this, 'attenuation', 'number', {
 					min: 0, max: 1, step: 0.01,
 				}),
-				this.$sentence = NE.Create('p'),
+				CreateInputEx('Starting X', this, 'startingX', 'number', {
+					min: 0, max: 1, step: 0.01,
+				}),
+				CreateInputEx('Starting Y', this, 'startingY', 'number', {
+					min: 0, max: 1, step: 0.01,
+				}),
+				NE.Create('p', {
+					children: [
+						NE.Create('span', { text: 'Generated sentence: ' }),
+						this.$sentence = NE.Create('pre'),
+					],
+				}),
 			],
 		});
 	};
@@ -49,7 +144,7 @@ class LSystemRuleset implements Ruleset {
 	AutoGrow(): Generator {
 		if(!this.tree)
 			return null;
-		return this.tree.root.Grow(this.depth);
+		return this.tree.root.Grow(this.settings.depth);
 	}
 
 	Draw(): void {
@@ -57,6 +152,11 @@ class LSystemRuleset implements Ruleset {
 		lSystemRuleset.$sentence.innerText = Array.from(this.#tree.root.leaves)
 			.map(node => (node as LSystemNode).type)
 			.join('');
+	}
+
+	#TriggerOnChangedInternally() {
+		for(const fn of this.onChangedInternally)
+			fn?.();
 	}
 }
 
@@ -68,15 +168,15 @@ class LSystem extends ShapeTree {
 	override readonly desiredSize: [number, number] = [400, 400];
 
 	constructor() {
-		super(new LSystemNode());
+		super(new LSystemNode(null, lSystemRuleset.settings.seed));
 	}
 
 	protected override BeginDrawing(): void {
 		angleMode(DEGREES);
-		translate(width / 2, height);
+		translate(lSystemRuleset.settings.startingX * width, (1 - lSystemRuleset.settings.startingY) * height);
 		scale(1, -1);
-		scale(lSystemRuleset.length);
-		strokeWeight(1.0 / lSystemRuleset.length);
+		scale(lSystemRuleset.settings.length);
+		strokeWeight(1.0 / lSystemRuleset.settings.length);
 	}
 }
 
@@ -91,7 +191,7 @@ class LSystemNode extends Node {
 	}
 
 	get length(): number {
-		return lSystemRuleset.length * Math.pow(lSystemRuleset.attenuation, this.level);
+		return lSystemRuleset.settings.length * Math.pow(lSystemRuleset.settings.attenuation, this.level);
 	}
 
 	constructor(parent: LSystemNode = null, type: string = 'F') {
@@ -102,11 +202,12 @@ class LSystemNode extends Node {
 	}
 
 	protected override *GrowOnce(): Iterable<Node> {
-		if(this.type !== 'F')
+		const rules = lSystemRuleset.settings.rules;
+		const applicableRules = rules.filter(r => r[0] === this.type);
+		if(!applicableRules.length)
 			return;
-		this.type = 'f';
-
-		for(const type of lSystemRuleset.rule) {
+		const rule = applicableRules[Math.floor(Math.random() * applicableRules.length)][1];
+		for(const type of rule) {
 			yield new LSystemNode(this, type);
 		}
 	}
@@ -114,16 +215,15 @@ class LSystemNode extends Node {
 	override Draw(): void {
 		switch(this.type) {
 			case 'F':
-				break;
 			case 'f':
 				translate(0, this.length);
 				line(0, -this.length, 0, 0);
 				break;
 			case '+':
-				rotate(+lSystemRuleset.angle);
+				rotate(+lSystemRuleset.settings.angle);
 				break;
 			case '-':
-				rotate(-lSystemRuleset.angle);
+				rotate(-lSystemRuleset.settings.angle);
 				break;
 			case '[':
 				push();
@@ -132,7 +232,7 @@ class LSystemNode extends Node {
 				pop();
 				break;
 			default:
-				throw new EvalError(`"${this.type}" is not a recognizable instruction.`);
+				break;
 		}
 		if(this.children) {
 			for(const child of this.children)

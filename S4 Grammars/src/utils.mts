@@ -41,25 +41,26 @@ export function CreateInput(label: string, onChanged: (value: string) => void, a
 
 export function CreateInputEx<P extends string>(
 	label: string,
-	target: { [key in P]: string | number; },
+	target: any,
 	propertyName: P,
 	type: 'number' | 'string',
 	attributes: ExtraAttributes = {},
 ) {
-	attributes['value'] = target[propertyName];
+	attributes['value'] = target.settings[propertyName];
 	// if(type === 'number' && ['min', 'max'].every(k => k in attributes))
 	// 	attributes['type'] = 'range';
-	return CreateInput(
+	const $input = CreateInput(
 		label,
 		val => {
 			switch(type) {
 				case 'string':
-					target[propertyName] = val;
+					target.settings[propertyName] = val;
 					break;
 				case 'number':
-					target[propertyName] = +val;
+					target.settings[propertyName] = +val;
 			}
 		},
 		attributes,
 	);
+	return $input;
 }
