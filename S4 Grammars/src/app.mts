@@ -50,7 +50,7 @@ export class App {
 				],
 			})),
 		});
-		this.#$systems.addEventListener('input', () => {
+		this.#$systems.addEventListener('change', () => {
 			const name: string = this.#$systems[App.#systemNameFormKey].value;
 			this.ruleset = rulesets.find(ruleset => ruleset.name === name);
 
@@ -58,7 +58,7 @@ export class App {
 		});
 
 		this.#$settings = document.forms['settings'];
-		this.#$settings.addEventListener('input', () => this.ScheduleRedraw());
+		this.#$settings.addEventListener('change', () => this.ScheduleRedraw());
 	}
 
 	async Start() {

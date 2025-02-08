@@ -26,7 +26,7 @@ const presets: LSystemSettings[] = [
 		angle: 10,
 		length: 7,
 		depth: 4,
-		attenuation: 0.5,
+		attenuation: 0.7,
 		startingX: 0.5,
 		startingY: 0.0,
 	},
@@ -104,7 +104,7 @@ class LSystemRuleset implements Ruleset<LSystemSettings> {
 								type: 'text',
 							},
 							on: {
-								input: ev => {
+								change: ev => {
 									const value = (ev.target as HTMLInputElement).value;
 									this.settings.rules = value.split(';').map(r => r.split('>') as [string, string]);
 								}
@@ -134,7 +134,7 @@ class LSystemRuleset implements Ruleset<LSystemSettings> {
 				NE.Create('p', {
 					children: [
 						NE.Create('span', { text: 'Generated sentence: ' }),
-						this.$sentence = NE.Create('pre'),
+						this.$sentence = NE.Create('code'),
 					],
 				}),
 			],

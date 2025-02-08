@@ -30,7 +30,7 @@ export function CreateInput(label: string, onChanged: (value: string) => void, a
 			NE.Create('input', {
 				attributes: Object.fromEntries(Object.entries(attributes).map(([k, v]) => [k, v + ''])),
 				on: {
-					input() {
+					change() {
 						onChanged(this.value);
 					},
 				}
