@@ -12,13 +12,14 @@ type LSystemSettings = {
 	length: number;
 	depth: number;
 	attenuation: number;
+	startingAngle: number;
 	startingX: number;
 	startingY: number;
 }
 
 const presets: LSystemSettings[] = [
 	{
-		name: 'Tree',
+		name: 'Trident tree',
 		seed: 'F',
 		rules: [
 			['F', 'f[++F][-ffF][----F]']
@@ -27,6 +28,7 @@ const presets: LSystemSettings[] = [
 		length: 7,
 		depth: 4,
 		attenuation: 0.7,
+		startingAngle: 90,
 		startingX: 0.5,
 		startingY: 0.0,
 	},
@@ -41,8 +43,53 @@ const presets: LSystemSettings[] = [
 		length: 2,
 		depth: 8,
 		attenuation: 1,
+		startingAngle: 0,
 		startingX: 0.5,
 		startingY: 0.5,
+	},
+	{
+		name: "Hilbert Curve",
+		seed: "A",
+		rules: [
+			["A", "+BF-AFA-FB+"],
+			["B", "-AF+BFB+FA-"]
+		],
+		angle: 90,
+		length: 2,
+		depth: 7,
+		attenuation: 1,
+		startingAngle: 0,
+		startingX: 0.0,
+		startingY: 0.0,
+	},
+	{
+		name: "Koch Curve",
+		seed: "F",
+		rules: [
+			["F", "F+F-F-F+F"],
+		],
+		angle: 90,
+		length: 2,
+		depth: 4,
+		attenuation: 1,
+		startingAngle: 0,
+		startingX: 0.0,
+		startingY: 0.0,
+	},
+	{
+		name: "Fractal Plant",
+		seed: "X",
+		rules: [
+			["F", "FF"],
+			["X", "F+[[X]-X]-F[-FX]+X"],
+		],
+		angle: 25,
+		length: 8,
+		depth: 5,
+		attenuation: 0.6,
+		startingAngle: 60,
+		startingX: 0.1,
+		startingY: 0.0,
 	},
 ];
 
@@ -125,6 +172,9 @@ class LSystemRuleset implements Ruleset<LSystemSettings> {
 				CreateInputEx('Attenuation', this, 'attenuation', 'number', {
 					min: 0, max: 1, step: 0.01,
 				}),
+				CreateInputEx('Starting Angle', this, 'startingAngle', 'number', {
+					min: 0, max: 360, step: 1,
+				}),
 				CreateInputEx('Starting X', this, 'startingX', 'number', {
 					min: 0, max: 1, step: 0.01,
 				}),
@@ -176,6 +226,7 @@ class LSystem extends ShapeTree {
 		translate(lSystemRuleset.settings.startingX * width, (1 - lSystemRuleset.settings.startingY) * height);
 		scale(1, -1);
 		scale(lSystemRuleset.settings.length);
+		rotate(lSystemRuleset.settings.startingAngle);
 		strokeWeight(1.0 / lSystemRuleset.settings.length);
 	}
 }
@@ -213,11 +264,17 @@ class LSystemNode extends Node {
 	}
 
 	override Draw(): void {
+		const children = Array.from(this.children);
+		if(children.length) {
+			for(const child of children)
+				child.Draw();
+			return;
+		}
 		switch(this.type) {
 			case 'F':
 			case 'f':
-				translate(0, this.length);
-				line(0, -this.length, 0, 0);
+				translate(this.length, 0);
+				line(-this.length, 0, 0, 0);
 				break;
 			case '+':
 				rotate(+lSystemRuleset.settings.angle);
@@ -233,10 +290,6 @@ class LSystemNode extends Node {
 				break;
 			default:
 				break;
-		}
-		if(this.children) {
-			for(const child of this.children)
-				child.Draw();
 		}
 	}
 }
