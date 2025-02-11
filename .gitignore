@@ -6,10 +6,9 @@
 
 !/p5.js Exercises
 
-!/S1 Directed Randomness
-!/S2 Free Topic
-!/S3 Recombination
-!/S4 Grammars
+!/S[0-9] *
+!/R[0-9] *
+/R[0-9] */*.pdf
 
 # NodeJS
 
