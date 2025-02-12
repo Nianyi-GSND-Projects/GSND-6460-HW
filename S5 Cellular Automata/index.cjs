@@ -184,13 +184,58 @@ class CellularAutomata extends Field {
 	}
 }
 
+class CAMap extends Field {
+	ratio = 0.5;
+	threshold = 4;
+
+	constructor(size) {
+		super(size);
+
+		this.SetByFn(() => Math.random() < this.ratio);
+	}
+
+	ValueAt(pos) {
+		return 1 - this.Get(pos);
+	}
+
+	#accDt = 0;
+	/** @override */
+	Update(dt) {
+		for(this.#accDt += dt; this.#accDt > 1; --this.#accDt) {
+			this.#UpdateOnce(1);
+		}
+	}
+
+	#UpdateOnce(dt) {
+		Field.prototype.Update.call(this, dt);
+	}
+
+	UpdateAt([x, y], v) {
+		const self = this.Get([x, y]);
+
+		let count = 0;
+		for(let dx = -1; dx <= 1; ++dx) {
+			for(let dy = -1; dy <= 1; ++dy) {
+				count += this.Get([x + dx, y + dy]);
+			}
+		}
+		count -= self;
+
+		if(count < this.threshold)
+			return 0;
+		if(count > this.threshold)
+			return 1;
+		return self;
+	}
+}
+
 class App {
 	/** @type { [number, number] } */
 	size = [1, 1];
 	scale = 2;
 	/** @type {Field} */
 	field;
-	fieldType = CellularAutomata;
+	fieldType = WaterHeightField;
 	speed = 5;
 	maxUpdateStep = 0.1;
 
@@ -198,6 +243,11 @@ class App {
 		frameRate(24);
 		createCanvas(1, 1);
 		this.Resize([40, 40], 10);
+
+		for(const $ of document.forms['settings']['field-type']) {
+			if($.tagName === 'INPUT')
+				$.checked = false;
+		}
 
 		document.forms['settings'].addEventListener('change', ev => {
 			const value = ev.target.value;
