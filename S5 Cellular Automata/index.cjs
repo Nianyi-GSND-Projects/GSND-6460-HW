@@ -14,7 +14,7 @@ function draw() {
 	app.Render();
 }
 
-class CellularAutomata {
+class Field {
 	constructor(size) {
 		this.size = size;
 		this.data = Array(this.size[0] * this.size[1]);
@@ -88,7 +88,7 @@ function MakeExtreme(v, t) {
 	return Math.pow(v, 1 / t);
 }
 
-class WaterHeightField extends CellularAutomata {
+class WaterHeightField extends Field {
 	dampCoef = 0.98;
 	genScale = 10;
 	genSeed = 117;
@@ -96,10 +96,10 @@ class WaterHeightField extends CellularAutomata {
 	constructor(size) {
 		super(size);
 
-		this.SetByFn(this.Init.bind(this));
+		this.SetByFn(this.#Init.bind(this));
 	}
 
-	Init(pos) {
+	#Init(pos) {
 		const v = noise(
 			...pos.map((v, i) =>
 				v / this.size[i] * this.genScale
@@ -139,12 +139,58 @@ class WaterHeightField extends CellularAutomata {
 	}
 }
 
+class CellularAutomata extends Field {
+	constructor(size) {
+		super(size);
+		this.SetByFn(() => Math.random() > 0.5);
+	}
+
+	ValueAt(pos) {
+		return 1 - this.Get(pos);
+	}
+
+	#accDt = 0;
+	/** @override */
+	Update(dt) {
+		for(this.#accDt += dt; this.#accDt > 1; --this.#accDt) {
+			this.#UpdateOnce(1);
+		}
+	}
+
+	#UpdateOnce(dt) {
+		Field.prototype.Update.call(this, dt);
+	}
+
+	UpdateAt([x, y]) {
+		const self = this.Get([x, y]);
+
+		let count = 0;
+		for(let dx = -1; dx <= 1; ++dx) {
+			for(let dy = -1; dy <= 1; ++dy) {
+				count += this.Get([x + dx, y + dy]);
+			}
+		}
+		count -= self;
+
+		if(count == 2)
+			return self;
+		if(count == 3)
+			return 1;
+		return 0;
+	}
+
+	InteractAt(pos, v) {
+		this.Set(pos, 1 - this.Get(pos));
+	}
+}
+
 class App {
 	/** @type { [number, number] } */
 	size = [1, 1];
 	scale = 2;
-	/** @type {CellularAutomata} */
-	ca;
+	/** @type {Field} */
+	field;
+	fieldType = CellularAutomata;
 	speed = 5;
 	maxUpdateStep = 0.1;
 
@@ -152,6 +198,15 @@ class App {
 		frameRate(24);
 		createCanvas(1, 1);
 		this.Resize([40, 40], 10);
+
+		document.forms['settings'].addEventListener('change', ev => {
+			const value = ev.target.value;
+			switch(ev.target.name) {
+				case 'field-type':
+					this.ReapplyFieldType(eval(value));
+					break;
+			}
+		});
 	}
 
 	Resize([w, h], s) {
@@ -159,24 +214,34 @@ class App {
 		this.scale = s;
 		resizeCanvas(w * s, h * s);
 
-		this.ca = new WaterHeightField(this.size);
+		this.ReapplyFieldType();
+	}
+
+	ReapplyFieldType(fieldType) {
+		if(fieldType === undefined) {
+			fieldType = this.fieldType;
+		}
+		if(typeof fieldType === 'string') {
+			console.log(fieldType);
+		}
+		this.field = new fieldType(this.size);
 	}
 
 	Update(dt) {
 		const totalUpdateStep = dt * this.speed;
 		const updateTime = Math.ceil(totalUpdateStep / this.maxUpdateStep);
 		for(let i = 0; i < updateTime; ++i)
-			this.ca.Update(totalUpdateStep / updateTime);
+			this.field.Update(totalUpdateStep / updateTime);
 	}
 
 	Render() {
 		resetMatrix();
 		scale(this.scale);
 		noStroke();
-		for(const pos of this.ca.Positions) {
+		for(const pos of this.field.Positions) {
 			push();
 			translate(...pos);
-			const datum = this.ca.ValueAt(pos);
+			const datum = this.field.ValueAt(pos);
 			const color = Math.floor(Clamp(datum) * 256);
 			fill(color);
 			rect(0, 0, 1, 1);
@@ -185,8 +250,8 @@ class App {
 	}
 
 	Interact(canvasPos, v) {
-		const fieldPos = canvasPos.map((x, i) => x * this.ca.size[i]);
-		this.ca.InteractAt(fieldPos, v);
+		const fieldPos = canvasPos.map((x, i) => x * this.field.size[i]);
+		this.field.InteractAt(fieldPos, v);
 	}
 }
 

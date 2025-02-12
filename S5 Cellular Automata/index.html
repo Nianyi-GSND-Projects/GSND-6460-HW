@@ -7,6 +7,20 @@
 		<meta charset="utf-8" />
 	</head>
 	<body>
+		<header>
+			<form name="settings">
+				<fieldset name="field-type">
+					<label>
+						<input value="WaterHeightField" type="radio" name="field-type" checked />
+						<span>Water height field</span>
+					</label>
+					<label>
+						<input value="CellularAutomata" type="radio" name="field-type" />
+						<span>Cellular automata</span>
+					</label>
+				</fieldset>
+			</form>
+		</header>
 		<main id="root"></main>
 		<script src="./index.cjs"></script>
 	</body>
